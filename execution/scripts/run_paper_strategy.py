@@ -23,6 +23,15 @@ from execution.common.execution_models import ExecutionPlan, PositionSnapshot, T
 from execution.common.order_safety import validate_execution_plan
 from execution.common.reconciliation import build_order_intents, normalize_current_weights
 from execution.common.state_store import write_latest_state, write_order_journal
+from execution.common.strategy_runtime import (
+    load_local_positions,
+    load_strategy_config,
+    load_target_positions,
+    normalized_buffer,
+    runtime_dir,
+    save_plan,
+    sync_latest_run,
+)
 
 
 def parse_args() -> argparse.Namespace:
@@ -54,125 +63,6 @@ def parse_args() -> argparse.Namespace:
     return parser.parse_args()
 
 
-def load_strategy_config(path: str | Path) -> dict:
-    config_path = Path(path)
-    return json.loads(config_path.read_text(encoding="utf-8"))
-
-
-def runtime_dir(strategy_id: str, override: str = "") -> Path:
-    if override:
-        return Path(override)
-    stamp = datetime.now(timezone.utc).strftime("%Y%m%dT%H%M%SZ")
-    return PROJECT_ROOT / "execution" / "runtime" / strategy_id / stamp
-
-
-def latest_dir(strategy_id: str) -> Path:
-    return PROJECT_ROOT / "execution" / "runtime" / strategy_id / "latest"
-
-
-def load_target_positions(source_path: str, rebalance_selection: str) -> list[TargetPosition]:
-    df = pd.read_csv(source_path, encoding="utf-8-sig")
-    if df.empty:
-        raise ValueError("No target positions found in source CSV.")
-
-    selection = str(rebalance_selection or "latest").lower()
-    if selection == "latest":
-        rebalance_date = str(df["rebalance_date"].max())
-    else:
-        rebalance_date = selection
-    current = df[df["rebalance_date"].astype(str) == rebalance_date].copy()
-    if current.empty:
-        raise ValueError(f"No rows found for rebalance date {rebalance_date}.")
-
-    targets: list[TargetPosition] = []
-    for _, row in current.iterrows():
-        targets.append(
-            TargetPosition(
-                symbol=str(row.get("symbol", "")),
-                target_weight=float(row.get("target_weight", row.get("weight", 0.0)) or 0.0),
-                previous_weight=float(row.get("previous_weight", 0.0) or 0.0),
-                action=str(row.get("action", "")),
-                reference_price=float(row.get("close", 0.0) or 0.0),
-                score=float(row.get("score", 0.0) or 0.0),
-                confidence=float(row.get("confidence", 0.0) or 0.0),
-                rebalance_date=rebalance_date,
-                metadata={
-                    "model_mode": row.get("model_mode", ""),
-                    "industry_group": row.get("industry_group", ""),
-                    "name": row.get("name", ""),
-                },
-            )
-        )
-    return targets
-
-
-def load_local_positions(path: str) -> list[PositionSnapshot]:
-    df = pd.read_csv(path, encoding="utf-8-sig")
-    positions: list[PositionSnapshot] = []
-    for _, row in df.iterrows():
-        positions.append(
-            PositionSnapshot(
-                symbol=str(row.get("symbol", "")),
-                qty=float(row.get("qty", 0.0) or 0.0),
-                market_value=float(row.get("market_value", 0.0) or 0.0),
-                current_price=float(row.get("current_price", 0.0) or 0.0),
-            )
-        )
-    return positions
-
-
-def save_plan(output_dir: Path, plan: ExecutionPlan) -> dict[str, str]:
-    output_dir.mkdir(parents=True, exist_ok=True)
-
-    plan_json_path = output_dir / "execution_plan.json"
-    targets_csv_path = output_dir / "target_positions.csv"
-    intents_csv_path = output_dir / "order_intents.csv"
-
-    plan_json_path.write_text(json.dumps(plan.to_dict(), ensure_ascii=False, indent=2), encoding="utf-8")
-    pd.DataFrame([item.to_dict() for item in plan.target_positions]).to_csv(
-        targets_csv_path, index=False, encoding="utf-8"
-    )
-    pd.DataFrame([item.to_dict() for item in plan.order_intents]).to_csv(
-        intents_csv_path, index=False, encoding="utf-8"
-    )
-    return {
-        "plan_json_path": str(plan_json_path),
-        "targets_csv_path": str(targets_csv_path),
-        "intents_csv_path": str(intents_csv_path),
-    }
-
-
-def sync_latest_run(strategy_id: str, run_dir: Path) -> Path:
-    latest_path = latest_dir(strategy_id)
-    latest_path.mkdir(parents=True, exist_ok=True)
-    for filename in [
-        "execution_plan.json",
-        "target_positions.csv",
-        "order_intents.csv",
-        "run_summary.json",
-        "submitted_orders.json",
-        "submission_attempts.json",
-        "submitted_order_statuses.json",
-        "pre_account_snapshot.json",
-        "pre_positions_snapshot.json",
-        "post_account_snapshot.json",
-        "post_positions_snapshot.json",
-    ]:
-        source = run_dir / filename
-        if source.exists():
-            target = latest_path / filename
-            target.write_bytes(source.read_bytes())
-    return latest_path
-
-
-def normalized_buffer(raw_value: object) -> float:
-    try:
-        value = float(raw_value)
-    except (TypeError, ValueError):
-        value = 1.0
-    return min(max(value, 0.0), 1.0)
-
-
 def main() -> int:
     args = parse_args()
     config = load_strategy_config(args.strategy_config)
@@ -186,6 +76,7 @@ def main() -> int:
     targets = load_target_positions(
         str(source["path"]),
         rebalance_selection=str(execution_config.get("rebalance_selection", "latest")),
+        actions_path=source.get("actions_path", ""),
     )
 
     if args.submit:

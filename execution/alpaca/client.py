@@ -94,6 +94,12 @@ class AlpacaBroker(BrokerInterface):
             raw=payload,
         )
 
+    def is_paper_trading_environment(self) -> bool:
+        return "paper" in self.credentials.base_url.lower()
+
+    def get_clock(self) -> dict[str, Any]:
+        return self._request("GET", "/v2/clock")
+
     def list_positions(self) -> list[PositionSnapshot]:
         payload = self._request("GET", "/v2/positions")
         positions: list[PositionSnapshot] = []
@@ -116,6 +122,35 @@ class AlpacaBroker(BrokerInterface):
         payload = self._request("GET", "/v2/orders", params={"status": "open"})
         return list(payload)
 
+    def list_orders(
+        self,
+        *,
+        status: str | None = None,
+        symbols: list[str] | None = None,
+        limit: int | None = None,
+        nested: bool | None = None,
+        after: str | None = None,
+        until: str | None = None,
+        direction: str | None = None,
+    ) -> list[dict[str, Any]]:
+        params: dict[str, Any] = {}
+        if status is not None:
+            params["status"] = status
+        if symbols:
+            params["symbols"] = ",".join(symbols)
+        if limit is not None:
+            params["limit"] = limit
+        if nested is not None:
+            params["nested"] = str(bool(nested)).lower()
+        if after is not None:
+            params["after"] = after
+        if until is not None:
+            params["until"] = until
+        if direction is not None:
+            params["direction"] = direction
+        payload = self._request("GET", "/v2/orders", params=params or None)
+        return list(payload)
+
     def cancel_open_orders(self) -> list[str]:
         open_orders = self.list_open_orders()
         canceled: list[str] = []
@@ -126,6 +161,10 @@ class AlpacaBroker(BrokerInterface):
             self._request("DELETE", f"/v2/orders/{order_id}")
             canceled.append(order_id)
         return canceled
+
+    def cancel_order(self, order_id: str) -> dict[str, Any]:
+        self._request("DELETE", f"/v2/orders/{order_id}")
+        return self.get_order(order_id)
 
     def get_order(self, order_id: str) -> dict[str, Any]:
         return self._request("GET", f"/v2/orders/{order_id}")

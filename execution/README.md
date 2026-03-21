@@ -25,10 +25,18 @@
   历史研究/实验对照策略
 - [scripts/run_paper_strategy.py](C:/Users/Apricity/Desktop/股票/execution/scripts/run_paper_strategy.py)
   生成或提交 paper 订单计划
+- [scripts/run_managed_paper_strategy.py](C:/Users/Apricity/Desktop/QuantStockForecast/execution/scripts/run_managed_paper_strategy.py)
+  使用产品化 runtime 生成/提交订单，并把 run manifest、decision、order、fill、equity snapshot 写入 SQLite ledger
 - [scripts/compare_paper_strategies.py](C:/Users/Apricity/Desktop/股票/execution/scripts/compare_paper_strategies.py)
   对比两条实战策略的上游表现和当前计划
 - [scripts/show_strategy_state.py](C:/Users/Apricity/Desktop/股票/execution/scripts/show_strategy_state.py)
   查看某条策略最新状态和订单流水
+- [scripts/paper_daily.py](C:/Users/Apricity/Desktop/QuantStockForecast/execution/scripts/paper_daily.py)
+  scheduler 友好的 preflight + run shell
+- [scripts/paper_smoke.py](C:/Users/Apricity/Desktop/QuantStockForecast/execution/scripts/paper_smoke.py)
+  一次性 smoke harness
+- [scripts/paper_ops.py](C:/Users/Apricity/Desktop/QuantStockForecast/execution/scripts/paper_ops.py)
+  读取 SQLite ledger 做 latest-run / open-orders / run-summary 检查
 
 ## 当前策略线
 
@@ -133,3 +141,27 @@ python execution/scripts/compare_paper_strategies.py execution/strategies/us_zer
 python execution/scripts/show_strategy_state.py us_zeroshot_a_share_multi_expert_daily
 python execution/scripts/show_strategy_state.py us_full_multi_expert_daily
 ```
+
+## 新的产品化运行时
+
+除了原先的轻量脚本，这个仓库现在还带了一套更偏生产运维的 paper runtime：
+
+- `python execution/scripts/run_managed_paper_strategy.py execution/strategies/us_zeroshot_a_share_multi_expert_daily.json`
+- `python execution/scripts/paper_daily.py execution/strategies/us_zeroshot_a_share_multi_expert_daily.json run`
+- `python execution/scripts/paper_smoke.py execution/strategies/us_zeroshot_a_share_multi_expert_daily.json`
+- `python execution/scripts/paper_ops.py execution/strategies/us_zeroshot_a_share_multi_expert_daily.json latest-run`
+
+这套 runtime 会额外维护：
+
+- `artifacts/paper_trading/<strategy_id>/paper_ledger.sqlite3`
+- run manifest
+- pre-trade order decision
+- broker recovery / reconciliation 结果
+- equity snapshot 与 operator-friendly healthcheck
+
+同时，如果策略 `source.path` 指向 `risk_positions.csv`，执行层现在会自动读取同目录下的 `risk_actions.csv`：
+
+- `target_weight > 0` 的持仓目标仍然来自 `risk_positions.csv`
+- `action=exit` 且目标权重为 `0` 的清仓目标会从 `risk_actions.csv` 自动补进执行计划
+
+这样可以避免白盒风控里已经判定清仓的 symbol，在执行层因为只读 `risk_positions.csv` 而漏掉卖单。

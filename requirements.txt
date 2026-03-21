@@ -1,5 +1,6 @@
 pandas>=2.0
 numpy>=1.24
+requests>=2.32
 lightgbm>=4.4
 xgboost>=3.2
 catboost>=1.2

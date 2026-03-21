@@ -63,13 +63,16 @@ def build_order_intents(
             continue
         side = "buy" if delta > 0 else "sell"
         submit_as = resolve_submit_mode(side, order_sizing_mode)
-        estimated_qty = abs(delta) / target.reference_price if target.reference_price > 0 else 0.0
+        reference_price = target.reference_price
+        if reference_price <= 0 and current is not None and current.current_price > 0:
+            reference_price = current.current_price
+        estimated_qty = abs(delta) / reference_price if reference_price > 0 else 0.0
         intents.append(
             OrderIntent(
                 symbol=target.symbol,
                 side=side,
                 delta_notional=delta,
-                reference_price=max(target.reference_price, 0.0),
+                reference_price=max(reference_price, 0.0),
                 estimated_qty=estimated_qty,
                 submit_notional=abs(delta) if submit_as == "notional" else 0.0,
                 submit_qty=estimated_qty if submit_as == "qty" else 0.0,

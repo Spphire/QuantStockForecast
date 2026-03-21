@@ -134,20 +134,18 @@ $env:ALPACA_US_FULL_BASE_URL="https://paper-api.alpaca.markets"
 
 ### 当前项目的更简便方式
 
-我已经按你的要求把第一组 paper 凭证保存在：
+执行层现在会：
 
-- [alpaca_accounts.local.json](C:/Users/Apricity/Desktop/股票/configs/alpaca_accounts.local.json)
+- 优先读环境变量
+- 如果环境变量没配，再尝试读取本地文件
+  [alpaca_accounts.local.json](C:/Users/Apricity/Desktop/股票/configs/alpaca_accounts.local.json)
 
-当前执行层会：
+注意当前仓库默认 **不包含真实凭据**。  
+也就是说，只有当你自己在本地创建了这个文件，或者已经设置好了环境变量，`--submit` 才会真的走到 Alpaca paper API。
 
-1. 优先读环境变量
-2. 如果环境变量没配，再自动读取这个本地配置文件
+如果你选择本地文件方案，记得：
 
-所以你现在后续直接运行脚本即可，不一定要再手动设置环境变量。
-
-注意：
-
-- 这个文件里现在有真实 secret
+- 这个文件里会有真实 secret
 - 不要把它发给别人
 - 如果你以后把项目上传到 GitHub，先删掉它或者把它加入忽略清单
 
@@ -253,18 +251,26 @@ python risk_management/white_box/scripts/run_white_box_risk.py model_prediction/
 
 这就是“每日调仓”的开关。
 
+补充说明：
+
+- 风控层会同时产出 `risk_positions.csv` 和 `risk_actions.csv`
+- 执行层会继续以 `risk_positions.csv` 为主
+- 但现在也会自动把同目录 `risk_actions.csv` 里的 `exit` 行补进执行计划，避免清仓信号在下单阶段丢失
+
 ## 9. 下单前先 dry-run
 
 ### zero-shot
 
 ```powershell
 python execution/scripts/run_paper_strategy.py execution/strategies/us_zeroshot_a_share_multi_expert_daily.json
+python execution/scripts/run_managed_paper_strategy.py execution/strategies/us_zeroshot_a_share_multi_expert_daily.json
 ```
 
 ### us_full
 
 ```powershell
 python execution/scripts/run_paper_strategy.py execution/strategies/us_full_multi_expert_daily.json
+python execution/scripts/run_managed_paper_strategy.py execution/strategies/us_full_multi_expert_daily.json
 ```
 
 生成的关键文件会在：
@@ -292,12 +298,14 @@ python execution/scripts/show_strategy_state.py us_full_multi_expert_daily
 
 ```powershell
 python execution/scripts/run_paper_strategy.py execution/strategies/us_zeroshot_a_share_multi_expert_daily.json --submit
+python execution/scripts/run_managed_paper_strategy.py execution/strategies/us_zeroshot_a_share_multi_expert_daily.json --submit
 ```
 
 ### us_full 提交
 
 ```powershell
 python execution/scripts/run_paper_strategy.py execution/strategies/us_full_multi_expert_daily.json --submit
+python execution/scripts/run_managed_paper_strategy.py execution/strategies/us_full_multi_expert_daily.json --submit
 ```
 
 脚本会：
@@ -360,6 +368,27 @@ python execution/scripts/show_strategy_state.py us_full_multi_expert_daily
 ```powershell
 python execution/scripts/compare_paper_strategies.py execution/strategies/us_zeroshot_a_share_multi_expert_daily.json execution/strategies/us_full_multi_expert_daily.json --output-csv execution/runtime/strategy_comparison_daily.csv
 ```
+
+## 11.5 产品化运维命令
+
+如果你要走更稳的 daily shell / smoke / ledger 检查链路，可以额外用这几条：
+
+```powershell
+python execution/scripts/paper_daily.py execution/strategies/us_zeroshot_a_share_multi_expert_daily.json run
+python execution/scripts/paper_smoke.py execution/strategies/us_zeroshot_a_share_multi_expert_daily.json
+python execution/scripts/paper_ops.py execution/strategies/us_zeroshot_a_share_multi_expert_daily.json latest-run
+python execution/scripts/paper_ops.py execution/strategies/us_zeroshot_a_share_multi_expert_daily.json open-orders
+```
+
+这套命令会把更完整的运行审计写到：
+
+- `artifacts/paper_trading/<strategy_id>/paper_ledger.sqlite3`
+
+其中 `paper_daily healthcheck` 主要检查的是：
+
+- `execution/state/<strategy_id>/latest_state.json`
+- `execution/state/<strategy_id>/order_journal.csv`
+- 最近一次提交状态快照里是否仍有未终态订单
 
 ## 12. 建议的调度方式
 

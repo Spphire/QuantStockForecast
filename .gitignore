@@ -18,6 +18,8 @@ execution/runtime/
 execution/state/
 risk_management/white_box/experiments/
 risk_management/white_box/runtime/
+artifacts/
+.pytest_cache/
 
 # Keep lightweight report assets tracked
 !docs/us_a_share_multi_expert_report_assets/

@@ -1,0 +1,33 @@
+[build-system]
+requires = ["setuptools>=68", "wheel"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "quantstockforecast"
+version = "0.1.0"
+description = "Multi-expert research and productized Alpaca paper execution"
+requires-python = ">=3.10"
+dependencies = [
+  "pandas>=2.0",
+  "numpy>=1.24",
+  "requests>=2.32",
+  "lightgbm>=4.4",
+  "xgboost>=3.2",
+  "catboost>=1.2",
+  "torch>=2.10",
+  "akshare>=1.18",
+  "pyyaml>=6.0",
+  "matplotlib>=3.10",
+]
+
+[project.optional-dependencies]
+dev = [
+  "pytest>=8.3",
+]
+
+[tool.pytest.ini_options]
+pythonpath = [".", "src"]
+testpaths = ["tests"]
+
+[tool.setuptools.packages.find]
+where = ["src"]
