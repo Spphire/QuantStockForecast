@@ -1,0 +1,4 @@
+interface:
+  display_name: "LightGBM"
+  short_description: "Train and run stock prediction with LightGBM"
+  default_prompt: "Use $lightgbm to train, evaluate, or update a LightGBM-based stock prediction workflow."

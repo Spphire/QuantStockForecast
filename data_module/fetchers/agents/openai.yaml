@@ -1,0 +1,4 @@
+interface:
+  display_name: "Stock Fetchers"
+  short_description: "Pull and normalize stock market data for training"
+  default_prompt: "Use $fetchers to pull and normalize stock market data for this project."

@@ -1,0 +1,23 @@
+{
+  "strategy_id": "us_full_regression_balanced",
+  "description": "U.S.-trained LightGBM regression model on the same large-cap universe with balanced white-box rules.",
+  "broker": "alpaca",
+  "market": "US",
+  "paper_env_prefix": "ALPACA_US_FULL",
+  "source": {
+    "type": "risk_positions_csv",
+    "path": "risk_management/white_box/experiments/us_full_suite/regression_balanced/risk_positions.csv",
+    "summary_path": "risk_management/white_box/experiments/us_full_suite/regression_balanced/risk_summary.json"
+  },
+  "execution": {
+    "rebalance_selection": "latest",
+    "default_account_equity": 100000.0,
+    "allow_fractional": true,
+    "min_order_notional": 50.0,
+    "max_position_weight": 0.35,
+    "long_only": true,
+    "order_type": "market",
+    "time_in_force": "day",
+    "cancel_open_orders_first": true
+  }
+}

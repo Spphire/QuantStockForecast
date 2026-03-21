@@ -1,0 +1,23 @@
+{
+  "strategy_id": "us_zeroshot_a_share_regression_balanced",
+  "description": "A-share trained LightGBM regression model zero-shot transferred to U.S. equities, aligned evaluation window and balanced white-box rules.",
+  "broker": "alpaca",
+  "market": "US",
+  "paper_env_prefix": "ALPACA_ZERO_SHOT",
+  "source": {
+    "type": "risk_positions_csv",
+    "path": "risk_management/white_box/experiments/us_zeroshot_aligned_suite/regression_balanced/risk_positions.csv",
+    "summary_path": "risk_management/white_box/experiments/us_zeroshot_aligned_suite/regression_balanced/risk_summary.json"
+  },
+  "execution": {
+    "rebalance_selection": "latest",
+    "default_account_equity": 100000.0,
+    "allow_fractional": true,
+    "min_order_notional": 50.0,
+    "max_position_weight": 0.35,
+    "long_only": true,
+    "order_type": "market",
+    "time_in_force": "day",
+    "cancel_open_orders_first": true
+  }
+}

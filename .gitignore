@@ -1,0 +1,24 @@
+.venv/
+__pycache__/
+*.pyc
+*.pyo
+*.pyd
+
+# Local secrets and machine-specific config
+configs/alpaca_accounts.local.json
+.env
+.env.*
+!execution/alpaca/.env.example
+
+# Large local datasets and generated artifacts
+data/
+model_prediction/**/artifacts/
+execution/experiments/
+execution/runtime/
+execution/state/
+risk_management/white_box/experiments/
+risk_management/white_box/runtime/
+
+# Keep lightweight report assets tracked
+!docs/us_a_share_multi_expert_report_assets/
+!docs/us_a_share_multi_expert_report_assets/*.csv

@@ -1,0 +1,26 @@
+{
+  "strategy_id": "aligned_catboost_a_share_regression_balanced",
+  "description": "Aligned-window A-share-trained catboost regression strategy evaluated zero-shot on U.S. equities.",
+  "broker": "alpaca",
+  "market": "US",
+  "paper_env_prefix": "ALPACA_ZERO_SHOT",
+  "source": {
+    "type": "risk_positions_csv",
+    "path": "C:\\Users\\Apricity\\Desktop\\股票\\execution\\experiments\\us_a_share_expert_suite_aligned_20250313_20251223\\catboost_regression_balanced\\risk\\risk_positions.csv",
+    "summary_path": "C:\\Users\\Apricity\\Desktop\\股票\\execution\\experiments\\us_a_share_expert_suite_aligned_20250313_20251223\\catboost_regression_balanced\\risk\\risk_summary.json"
+  },
+  "execution": {
+    "rebalance_selection": "all",
+    "default_account_equity": 100000.0,
+    "allow_fractional": true,
+    "min_order_notional": 50.0,
+    "max_position_weight": 0.35,
+    "long_only": true,
+    "order_type": "market",
+    "time_in_force": "day",
+    "cancel_open_orders_first": true,
+    "order_sizing_mode": "hybrid",
+    "buying_power_buffer": 0.97,
+    "transaction_cost_bps": 10.0
+  }
+}

@@ -1,0 +1,25 @@
+{
+  "strategy_id": "lightgbm_a_share_regression_balanced",
+  "description": "A-share trained LightGBM regression model zero-shot transferred to U.S. equities, using balanced white-box rules and Alpaca-style historical execution sizing.",
+  "broker": "alpaca",
+  "market": "US",
+  "source": {
+    "type": "risk_positions_csv",
+    "path": "execution/experiments/us_a_share_expert_suite/lightgbm_regression_balanced/risk/risk_positions.csv",
+    "summary_path": "execution/experiments/us_a_share_expert_suite/lightgbm_regression_balanced/risk/risk_summary.json"
+  },
+  "execution": {
+    "rebalance_selection": "latest",
+    "default_account_equity": 100000.0,
+    "allow_fractional": true,
+    "min_order_notional": 50.0,
+    "max_position_weight": 0.35,
+    "long_only": true,
+    "order_type": "market",
+    "time_in_force": "day",
+    "cancel_open_orders_first": true,
+    "order_sizing_mode": "hybrid",
+    "buying_power_buffer": 0.97,
+    "transaction_cost_bps": 10
+  }
+}
