@@ -2,9 +2,9 @@
 
 ## Scope
 
-This report summarizes the current end-to-end experiment set for `A股训练 -> 美股 zero-shot -> 白盒风控 -> Alpaca-style historical execution`.
+This report is an internal research note summarizing the current end-to-end experiment set for `A股训练 -> 美股 zero-shot -> 白盒风控 -> Alpaca-style historical execution`.
 
-The aligned comparison window used for the main cross-expert table is **2025-03-13 to 2025-12-23**. Single experts were filtered to that common window so they can be compared with the 5-expert ensemble on the same date range.
+The aligned comparison window used for the main cross-expert table is **2025-03-13 to 2025-12-23**. This window was chosen because it is the common overlap across the five single-expert zero-shot outputs used in the ensemble comparison, with `transformer` starting later than the others. Single experts were filtered to that common window so they can be compared with the 5-expert ensemble on the same date range.
 
 Core datasets:
 - A-share training universe: [large_cap_50_20200101_20241231_hfq_normalized.csv](C:/Users/Apricity/Desktop/股票/data/interim/akshare/universes/large_cap_50_20200101_20241231_hfq_normalized.csv)
@@ -57,9 +57,11 @@ Alpaca-style execution replay settings:
 - `buying_power_buffer=0.97`
 - `transaction_cost_bps=10`
 
+`Tx Cost` in the tables below is reported in simulated account currency (`USD`), not in basis points. In the execution replay, each order cost is computed as `executed_notional * transaction_cost_bps / 10000`, then summed across executed orders. The implementation is in [backtest_alpaca_style.py](C:/Users/Apricity/Desktop/股票/execution/scripts/backtest_alpaca_style.py).
+
 ## Single Experts
 
-| Expert | Corr | Dir Acc | Risk Return | Risk Benchmark | Execution Return | Execution Benchmark | Excess | Max DD | Tx Cost |
+| Expert | Corr | Dir Acc | Risk Return | Risk Benchmark | Execution Return | Execution Benchmark | Excess | Max DD | Tx Cost (USD) |
 | --- | ---: | ---: | ---: | ---: | ---: | ---: | ---: | ---: | ---: |
 | transformer | 0.0208 | 49.61% | 217.58% | 183.58% | 28.39% | 183.58% | -155.18% | -17.49% | 8519.42 |
 | lstm | 0.1187 | 48.13% | 470.02% | 146.75% | 21.06% | 146.75% | -125.69% | -14.42% | 2315.30 |
@@ -89,7 +91,7 @@ The ensemble combiner is implemented in:
 
 Aligned ensemble results:
 
-| Ensemble | Corr | Dir Acc | Risk Return | Risk Benchmark | Execution Return | Execution Benchmark | Excess | Max DD | Tx Cost |
+| Ensemble | Corr | Dir Acc | Risk Return | Risk Benchmark | Execution Return | Execution Benchmark | Excess | Max DD | Tx Cost (USD) |
 | --- | ---: | ---: | ---: | ---: | ---: | ---: | ---: | ---: | ---: |
 | ensemble_mean_score | 0.0535 | 48.20% | 412.70% | 183.58% | 36.32% | 183.58% | -147.26% | -15.19% | 7435.86 |
 | ensemble_rank_average | 0.0591 | 56.65% | 354.19% | 183.58% | 17.20% | 183.58% | -166.38% | -14.83% | 9492.18 |
@@ -105,10 +107,18 @@ Ensemble artifacts:
 - Mean score: [ensemble mean_score dir](C:/Users/Apricity/Desktop/股票/execution/experiments/us_a_share_expert_suite/ensemble_mean_score_regression_balanced)
 - Vote: [ensemble vote dir](C:/Users/Apricity/Desktop/股票/execution/experiments/us_a_share_expert_suite/ensemble_vote_regression_balanced)
 
+## Limitations
+
+- The benchmark used here is an internal same-window, same-pool reference, not an external market benchmark such as `SPY`.
+- The aligned ranking table is based on one common overlap window only. It should not be read as a stable multi-window leaderboard.
+- The report does not yet include a U.S.-trained in-domain control inside the same comparison table.
+- Transaction costs are modeled as a simple proportional fee proxy, not a full broker fee + slippage + queue-position decomposition.
+
 ## Takeaways
 
 - Infrastructure-wise, the project is now genuinely multi-expert: `lightgbm`, `xgboost`, `catboost`, `lstm`, `transformer`, and `ensemble` all run through the same downstream `signal -> white_box_risk -> execution` chain.
 - Signal quality does not translate linearly into executable return. Several experts show strong risk-layer returns but much weaker Alpaca-style execution returns once turnover, weight caps, and transaction costs are applied.
 - On the aligned window, the current best single expert by execution return is **transformer**, while the current best ensemble is **ensemble_mean_score**.
-- The aligned results support a cautious conclusion: the system can generate transferable signals from A-share-trained models into U.S. equities, but the current execution layer is still too lossy for those signals to beat the internal same-window benchmark consistently.
+- The aligned results support only a cautious research conclusion: on one aligned U.S. window, the system exhibits cross-domain signal behavior from A-share-trained models, but this is not yet enough to claim robust transferability.
+- The current execution layer is still too lossy for these strategies to beat the internal same-window benchmark consistently.
 - The next most valuable improvement is to add a **fixed external benchmark** such as `SPY buy-and-hold` or a fixed equal-weight U.S. pool benchmark, so future reports do not rely only on the internal same-window benchmark.
