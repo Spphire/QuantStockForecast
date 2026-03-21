@@ -16,8 +16,8 @@ Today's work focused on the `multi-expert` research line rather than the product
   - Alpaca-style historical execution replay
 - Ran aligned comparison experiments on the shared U.S. evaluation window `2025-03-13` to `2025-12-23`.
 - Updated the main experiment report and comparison table:
-  - [us_a_share_multi_expert_report.md](C:/Users/Apricity/Desktop/股票/docs/us_a_share_multi_expert_report.md)
-  - [aligned_expert_ensemble_comparison.csv](C:/Users/Apricity/Desktop/股票/docs/us_a_share_multi_expert_report_assets/aligned_expert_ensemble_comparison.csv)
+  - [us_a_share_multi_expert_report.md](C:/Users/Apricity/Desktop/股票/docs/experiments/us_a_share_multi_expert_report.md)
+  - [aligned_expert_ensemble_comparison.csv](C:/Users/Apricity/Desktop/股票/docs/experiments/assets/us_a_share_multi_expert_report_assets/aligned_expert_ensemble_comparison.csv)
 
 ## Key Outcomes
 

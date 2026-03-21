@@ -70,14 +70,16 @@
 - [execution/alpaca/README.md](C:/Users/Apricity/Desktop/股票/execution/alpaca/README.md)
   Alpaca 适配器和双 paper strategy
 
-## 关键报告
+## 文档导航
 
-- [docs/experiment_test_report.md](C:/Users/Apricity/Desktop/股票/docs/experiment_test_report.md)
-  A 股实验报告
-- [docs/us_zeroshot_experiment_report.md](C:/Users/Apricity/Desktop/股票/docs/us_zeroshot_experiment_report.md)
-  美股 zero-shot 实验报告
-- [docs/aligned_pipeline.md](C:/Users/Apricity/Desktop/股票/docs/aligned_pipeline.md)
-  当前推荐流程
+- [docs/README.md](C:/Users/Apricity/Desktop/股票/docs/README.md)
+  文档总入口，按项目说明 / 实验报告 / 开发日志分组
+- [project/architecture_overview.md](C:/Users/Apricity/Desktop/股票/docs/project/architecture_overview.md)
+  项目整体架构与模块边界
+- [project/usage_guide.md](C:/Users/Apricity/Desktop/股票/docs/project/usage_guide.md)
+  常用研究、回测与 paper trading 使用说明
+- [experiments/us_a_share_multi_expert_report.md](C:/Users/Apricity/Desktop/股票/docs/experiments/us_a_share_multi_expert_report.md)
+  最新多专家 A 股训练 -> 美股 zero-shot 报告
 
 ## 当前最重要的接口约束
 

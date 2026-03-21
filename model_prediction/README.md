@@ -71,7 +71,7 @@ python model_prediction/common/run_expert_model.py predict xgboost -- INPUT.csv 
 
 最新多 expert 冒烟验证见：
 
-- [multi_expert_validation.md](C:/Users/Apricity/Desktop/股票/docs/multi_expert_validation.md)
+- [multi_expert_validation.md](C:/Users/Apricity/Desktop/股票/docs/experiments/multi_expert_validation.md)
 
 这轮已经验证：
 

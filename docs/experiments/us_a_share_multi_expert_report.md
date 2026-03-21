@@ -10,7 +10,7 @@ Core datasets:
 - A-share training universe: [large_cap_50_20200101_20241231_hfq_normalized.csv](C:/Users/Apricity/Desktop/股票/data/interim/akshare/universes/large_cap_50_20200101_20241231_hfq_normalized.csv)
 - U.S. zero-shot universe: [us_large_cap_30_20200101_20260320_hfq_normalized.csv](C:/Users/Apricity/Desktop/股票/data/interim/stooq/universes/us_large_cap_30_20200101_20260320_hfq_normalized.csv)
 - U.S. metadata: [us_large_cap_30_metadata.csv](C:/Users/Apricity/Desktop/股票/data/interim/stooq/universes/us_large_cap_30_metadata.csv)
-- Consolidated aligned table: [aligned_expert_ensemble_comparison.csv](C:/Users/Apricity/Desktop/股票/docs/us_a_share_multi_expert_report_assets/aligned_expert_ensemble_comparison.csv)
+- Consolidated aligned table: [aligned_expert_ensemble_comparison.csv](C:/Users/Apricity/Desktop/股票/docs/experiments/assets/us_a_share_multi_expert_report_assets/aligned_expert_ensemble_comparison.csv)
 
 ## Benchmark
 
