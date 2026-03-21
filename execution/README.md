@@ -27,6 +27,8 @@
   生成或提交 paper 订单计划
 - [scripts/run_managed_paper_strategy.py](C:/Users/Apricity/Desktop/QuantStockForecast/execution/scripts/run_managed_paper_strategy.py)
   使用产品化 runtime 生成/提交订单，并把 run manifest、decision、order、fill、equity snapshot 写入 SQLite ledger
+- [managed/README.md](C:/Users/Apricity/Desktop/QuantStockForecast/execution/managed/README.md)
+  产品级 runtime 的正式边界说明与模块入口
 - [scripts/compare_paper_strategies.py](C:/Users/Apricity/Desktop/股票/execution/scripts/compare_paper_strategies.py)
   对比两条实战策略的上游表现和当前计划
 - [scripts/show_strategy_state.py](C:/Users/Apricity/Desktop/股票/execution/scripts/show_strategy_state.py)
@@ -144,12 +146,16 @@ python execution/scripts/show_strategy_state.py us_full_multi_expert_daily
 
 ## 新的产品化运行时
 
-除了原先的轻量脚本，这个仓库现在还带了一套更偏生产运维的 paper runtime：
+除了原先的轻量脚本，这个仓库现在还带了一套更偏生产运维的 paper runtime。
 
-- `python execution/scripts/run_managed_paper_strategy.py execution/strategies/us_zeroshot_a_share_multi_expert_daily.json`
-- `python execution/scripts/paper_daily.py execution/strategies/us_zeroshot_a_share_multi_expert_daily.json run`
-- `python execution/scripts/paper_smoke.py execution/strategies/us_zeroshot_a_share_multi_expert_daily.json`
-- `python execution/scripts/paper_ops.py execution/strategies/us_zeroshot_a_share_multi_expert_daily.json latest-run`
+推荐直接使用模块入口：
+
+- `python -m execution.managed.apps.run_multi_expert_paper execution/strategies/us_zeroshot_a_share_multi_expert_daily.json`
+- `python -m execution.managed.apps.paper_daily execution/strategies/us_zeroshot_a_share_multi_expert_daily.json run`
+- `python -m execution.managed.apps.paper_smoke execution/strategies/us_zeroshot_a_share_multi_expert_daily.json`
+- `python -m execution.managed.apps.paper_ops execution/strategies/us_zeroshot_a_share_multi_expert_daily.json latest-run`
+
+兼容层脚本 `execution/scripts/*.py` 仍然保留，但它们现在只是 thin wrapper，方便已有调度器沿用旧调用方式。
 
 这套 runtime 会额外维护：
 

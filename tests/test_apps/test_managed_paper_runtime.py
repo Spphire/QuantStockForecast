@@ -8,9 +8,9 @@ from pathlib import Path
 from types import SimpleNamespace
 
 from execution.common.strategy_runtime import parse_session_date
-from stockmachine.apps import run_multi_expert_paper as runner
-from stockmachine.state.ledger import LocalLedger
-from stockmachine.state.models import OrderRecord, RunManifestRecord, RunRecord
+from execution.managed.apps import run_multi_expert_paper as runner
+from execution.managed.state.ledger import LocalLedger
+from execution.managed.state.models import OrderRecord, RunManifestRecord, RunRecord
 
 
 def test_managed_paper_dry_run_records_ledger_and_state(monkeypatch, strategy_bundle_factory, tmp_path: Path) -> None:
@@ -140,3 +140,4 @@ def test_managed_paper_submit_requires_paper_environment(monkeypatch, strategy_b
         assert "non-paper orders" in str(exc)
 
     assert raised is True
+

@@ -9,7 +9,7 @@ from typing import Any, Mapping
 import pandas as pd
 from pandas.errors import EmptyDataError
 
-from stockmachine.monitoring.alerts import TERMINAL_ORDER_STATUSES
+from execution.managed.monitoring.alerts import TERMINAL_ORDER_STATUSES
 
 
 PROJECT_ROOT = Path(__file__).resolve().parents[3]
@@ -162,3 +162,4 @@ def _parse_date(value: Any) -> date | None:
         return date.fromisoformat(str(value))
     except ValueError:
         return None
+

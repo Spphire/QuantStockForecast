@@ -7,7 +7,7 @@ from typing import Any, Mapping, Sequence
 
 import json
 
-from stockmachine.monitoring.reports import PaperRunFailure, PaperRunReport
+from execution.managed.monitoring.reports import PaperRunFailure, PaperRunReport
 
 
 TERMINAL_ORDER_STATUSES = {"filled", "canceled", "cancelled", "rejected", "expired"}
@@ -317,3 +317,4 @@ def _json_safe(value: Any) -> Any:
     if is_dataclass(value):
         return asdict(value)
     return value
+

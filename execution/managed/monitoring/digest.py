@@ -7,9 +7,9 @@ from typing import Any, Mapping, Sequence
 
 import json
 
-from stockmachine.monitoring.alerts import OperatorAlert, build_operator_alerts
-from stockmachine.monitoring.healthcheck import build_paper_daily_healthcheck
-from stockmachine.monitoring.reports import PaperRunFailure, build_paper_run_report
+from execution.managed.monitoring.alerts import OperatorAlert, build_operator_alerts
+from execution.managed.monitoring.healthcheck import build_paper_daily_healthcheck
+from execution.managed.monitoring.reports import PaperRunFailure, build_paper_run_report
 
 
 PROJECT_ROOT = Path(__file__).resolve().parents[3]
@@ -314,3 +314,4 @@ def _json_safe(value: Any) -> Any:
     if is_dataclass(value):
         return asdict(value)
     return value
+

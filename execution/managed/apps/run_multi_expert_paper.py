@@ -27,17 +27,17 @@ from execution.common.strategy_runtime import (
     save_plan,
     sync_latest_run,
 )
-from stockmachine.live.reconciler import PollingOrderReconciler
-from stockmachine.live.recovery import recover_open_orders
-from stockmachine.live.session_guard import SessionGuard, SessionGuardRequest
-from stockmachine.monitoring.reports import (
+from execution.managed.live.reconciler import PollingOrderReconciler
+from execution.managed.live.recovery import recover_open_orders
+from execution.managed.live.session_guard import SessionGuard, SessionGuardRequest
+from execution.managed.monitoring.reports import (
     PaperRunFailure,
     build_paper_run_manifest,
     build_paper_run_report,
 )
-from stockmachine.risk.paper import BrokerAwareOrderRiskPolicy
-from stockmachine.state.ledger import LocalLedger
-from stockmachine.state.models import EquitySnapshotRecord, OrderDecisionRecord, RunRecord, TargetRecord
+from execution.managed.risk.paper import BrokerAwareOrderRiskPolicy
+from execution.managed.state.ledger import LocalLedger
+from execution.managed.state.models import EquitySnapshotRecord, OrderDecisionRecord, RunRecord, TargetRecord
 
 
 @dataclass(slots=True, frozen=True)
@@ -307,6 +307,7 @@ def run_strategy(
             "issues": [],
         }
         if submit and broker is not None and account is not None:
+            cancel_open_orders_first = bool(execution_config.get("cancel_open_orders_first", True))
             snapshot_paths.update(save_account_snapshot(broker, run_dir, prefix="pre"))
             clock_payload = broker.get_clock()
             _record_equity_snapshot(
@@ -342,14 +343,16 @@ def run_strategy(
                 max_total_notional=_coerce_optional_float(execution_config.get("max_total_notional")),
                 max_total_orders=_coerce_optional_int(execution_config.get("max_total_orders")),
             )
+            validation_open_orders = () if cancel_open_orders_first else open_orders
             validation = risk_policy.validate(
                 orders=plan.order_intents,
                 account_sync=_account_sync_payload(account.raw, clock_payload),
-                open_orders=open_orders,
+                open_orders=validation_open_orders,
             )
             validation_summary = {
                 "approved_count": len(validation.approved_orders),
                 "blocked_count": len(validation.blocked_orders),
+                "open_orders_considered": len(validation_open_orders),
                 "issues": [issue.to_dict() if hasattr(issue, "to_dict") else asdict(issue) for issue in validation.issues],
             }
             _record_order_decisions(
@@ -383,7 +386,7 @@ def run_strategy(
             submission_result = submit_execution_plan(
                 broker,
                 approved_plan,
-                cancel_open_orders_first=bool(execution_config.get("cancel_open_orders_first", True)),
+                cancel_open_orders_first=cancel_open_orders_first,
                 buy_retry_shrink_ratio=float(execution_config.get("buy_retry_shrink_ratio", 0.97)),
                 max_buy_retries=int(execution_config.get("max_buy_retries", 1)),
                 refresh_status_after_submit=bool(execution_config.get("refresh_status_after_submit", True)),
@@ -806,3 +809,4 @@ def _print_text_result(result: ManagedPaperRunResult) -> None:
 
 if __name__ == "__main__":
     raise SystemExit(main())
+

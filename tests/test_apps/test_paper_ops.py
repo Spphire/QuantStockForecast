@@ -6,9 +6,9 @@ from dataclasses import dataclass
 from datetime import datetime, timezone
 from pathlib import Path
 
-from stockmachine.apps import paper_ops
-from stockmachine.state.ledger import LocalLedger
-from stockmachine.state.models import OrderRecord, RunManifestRecord, RunRecord
+from execution.managed.apps import paper_ops
+from execution.managed.state.ledger import LocalLedger
+from execution.managed.state.models import OrderRecord, RunManifestRecord, RunRecord
 
 
 @dataclass(slots=True)
@@ -156,3 +156,4 @@ def test_run_summary_includes_report_and_latest_state(monkeypatch, strategy_bund
     assert payload["run_id"] == run_id
     assert payload["report"]["run_id"] == run_id
     assert payload["latest_state"] == state_payload
+

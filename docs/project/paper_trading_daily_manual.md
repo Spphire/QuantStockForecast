@@ -374,10 +374,10 @@ python execution/scripts/compare_paper_strategies.py execution/strategies/us_zer
 如果你要走更稳的 daily shell / smoke / ledger 检查链路，可以额外用这几条：
 
 ```powershell
-python execution/scripts/paper_daily.py execution/strategies/us_zeroshot_a_share_multi_expert_daily.json run
-python execution/scripts/paper_smoke.py execution/strategies/us_zeroshot_a_share_multi_expert_daily.json
-python execution/scripts/paper_ops.py execution/strategies/us_zeroshot_a_share_multi_expert_daily.json latest-run
-python execution/scripts/paper_ops.py execution/strategies/us_zeroshot_a_share_multi_expert_daily.json open-orders
+python -m execution.managed.apps.paper_daily execution/strategies/us_zeroshot_a_share_multi_expert_daily.json run
+python -m execution.managed.apps.paper_smoke execution/strategies/us_zeroshot_a_share_multi_expert_daily.json
+python -m execution.managed.apps.paper_ops execution/strategies/us_zeroshot_a_share_multi_expert_daily.json latest-run
+python -m execution.managed.apps.paper_ops execution/strategies/us_zeroshot_a_share_multi_expert_daily.json open-orders
 ```
 
 这套命令会把更完整的运行审计写到：

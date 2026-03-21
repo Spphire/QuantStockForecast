@@ -7,9 +7,9 @@ from pathlib import Path
 
 import pandas as pd
 
-from stockmachine.apps import paper_ops
-from stockmachine.apps.run_multi_expert_paper import run_strategy
-from stockmachine.monitoring.healthcheck import build_paper_daily_healthcheck
+from execution.managed.apps import paper_ops
+from execution.managed.apps.run_multi_expert_paper import run_strategy
+from execution.managed.monitoring.healthcheck import build_paper_daily_healthcheck
 
 
 def _write_csv(path: Path, rows: list[dict]) -> None:
@@ -162,3 +162,4 @@ def test_managed_runner_dry_run_updates_state_and_ops(isolated_project_root, tmp
     assert payload["run_id"] == result.summary["run_id"]
     assert payload["latest_state"]["strategy_id"] == "demo_strategy"
     assert payload["alerts"] == []
+

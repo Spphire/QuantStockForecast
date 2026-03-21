@@ -37,7 +37,8 @@
 - Alpaca 适配器：
   [execution/alpaca/README.md](C:/Users/Apricity/Desktop/股票/execution/alpaca/README.md)
 - 产品化 runtime：
-  [run_managed_paper_strategy.py](C:/Users/Apricity/Desktop/QuantStockForecast/execution/scripts/run_managed_paper_strategy.py)
+  [execution/managed/README.md](C:/Users/Apricity/Desktop/QuantStockForecast/execution/managed/README.md)
+  / [run_managed_paper_strategy.py](C:/Users/Apricity/Desktop/QuantStockForecast/execution/scripts/run_managed_paper_strategy.py)
   / [paper_daily.py](C:/Users/Apricity/Desktop/QuantStockForecast/execution/scripts/paper_daily.py)
   / [paper_ops.py](C:/Users/Apricity/Desktop/QuantStockForecast/execution/scripts/paper_ops.py)
 

@@ -6,7 +6,7 @@ from pathlib import Path
 from typing import Any, Mapping
 from uuid import uuid4
 
-from stockmachine.state.models import RunManifestRecord
+from execution.managed.state.models import RunManifestRecord
 
 
 PROJECT_ROOT = Path(__file__).resolve().parents[3]
@@ -311,3 +311,4 @@ def _artifact_mtime(path: Path) -> float:
         if candidate.exists():
             mtimes.append(candidate.stat().st_mtime)
     return max(mtimes) if mtimes else 0.0
+

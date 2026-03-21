@@ -6,7 +6,7 @@ from dataclasses import dataclass
 from pathlib import Path
 from types import SimpleNamespace
 
-from stockmachine.apps import paper_daily
+from execution.managed.apps import paper_daily
 
 
 @dataclass(slots=True)
@@ -164,3 +164,4 @@ def test_read_kill_switch_parses_booleanish_payload(tmp_path: Path) -> None:
     kill_path.write_text("ON", encoding="utf-8")
     active = paper_daily.read_kill_switch("demo", override=str(kill_path))
     assert active.active is True
+

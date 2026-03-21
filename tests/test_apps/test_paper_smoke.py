@@ -2,7 +2,7 @@ from __future__ import annotations
 
 import argparse
 
-from stockmachine.apps import paper_smoke
+from execution.managed.apps import paper_smoke
 
 
 def test_build_smoke_payload_includes_recommended_commands(monkeypatch, strategy_bundle_factory, tmp_path) -> None:
@@ -37,5 +37,6 @@ def test_build_smoke_payload_includes_recommended_commands(monkeypatch, strategy
     assert payload["command"] == "smoke"
     assert payload["ok"] is True
     assert payload["run"]["summary"]["strategy_id"] == "demo"
-    assert payload["recommended_commands"]["healthcheck"][:3] == ["python", "-m", "stockmachine.apps.paper_daily"]
+    assert payload["recommended_commands"]["healthcheck"][:3] == ["python", "-m", "execution.managed.apps.paper_daily"]
     assert payload["recommended_commands"]["healthcheck"][4] == "healthcheck"
+

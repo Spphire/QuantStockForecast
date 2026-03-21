@@ -4,7 +4,7 @@ import argparse
 import json
 from typing import Sequence
 
-from stockmachine.apps import paper_daily
+from execution.managed.apps import paper_daily
 
 
 def build_arg_parser() -> argparse.ArgumentParser:
@@ -48,7 +48,7 @@ def build_smoke_payload(args: argparse.Namespace) -> dict:
             "healthcheck": [
                 "python",
                 "-m",
-                "stockmachine.apps.paper_daily",
+                "execution.managed.apps.paper_daily",
                 args.strategy_config,
                 "healthcheck",
                 "--ledger-path",
@@ -58,14 +58,14 @@ def build_smoke_payload(args: argparse.Namespace) -> dict:
             else [
                 "python",
                 "-m",
-                "stockmachine.apps.paper_daily",
+                "execution.managed.apps.paper_daily",
                 args.strategy_config,
                 "healthcheck",
             ],
             "ops_latest_run": [
                 "python",
                 "-m",
-                "stockmachine.apps.paper_ops",
+                "execution.managed.apps.paper_ops",
                 args.strategy_config,
                 "latest-run",
                 *(
@@ -88,3 +88,4 @@ def main(argv: Sequence[str] | None = None) -> int:
 
 if __name__ == "__main__":
     raise SystemExit(main())
+

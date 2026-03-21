@@ -7,7 +7,7 @@ import sqlite3
 from pathlib import Path
 from typing import Any, Mapping, Sequence
 
-from stockmachine.state.ledger import LocalLedger
+from execution.managed.state.ledger import LocalLedger
 
 
 _TERMINAL_RUN_STATUSES = {"finished", "success", "completed"}
@@ -217,3 +217,4 @@ def evaluate_session_guard(request: SessionGuardRequest) -> SessionGuardResult:
     """Convenience helper mirroring SessionGuard.evaluate."""
 
     return SessionGuard(request.ledger).evaluate(request)
+

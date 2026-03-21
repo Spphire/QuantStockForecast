@@ -1,126 +1,16 @@
 from __future__ import annotations
 
 import json
-import sys
-import types
-from dataclasses import dataclass
 from pathlib import Path
-from typing import Any
 
 import pandas as pd
 import pytest
-
-
-def _install_live_stubs() -> None:
-    repo_root = Path(__file__).resolve().parents[1]
-    live_dir = repo_root / "src" / "stockmachine" / "live"
-
-    live_pkg = sys.modules.get("stockmachine.live")
-    if live_pkg is None:
-        live_pkg = types.ModuleType("stockmachine.live")
-        live_pkg.__path__ = [str(live_dir)]
-        sys.modules["stockmachine.live"] = live_pkg
-
-    if "stockmachine.live.reconciler" not in sys.modules:
-        reconciler = types.ModuleType("stockmachine.live.reconciler")
-
-        class PollingOrderReconciler:
-            def __init__(self, ledger: Any) -> None:
-                self.ledger = ledger
-                self.last_order_statuses: tuple[dict[str, Any], ...] = ()
-
-            def reconcile_orders(self, order_statuses: list[dict[str, Any]]) -> dict[str, int]:
-                self.last_order_statuses = tuple(dict(item) for item in order_statuses)
-                return {"reconciled": len(order_statuses)}
-
-        reconciler.PollingOrderReconciler = PollingOrderReconciler
-        sys.modules["stockmachine.live.reconciler"] = reconciler
-
-    if "stockmachine.live.recovery" not in sys.modules:
-        recovery = types.ModuleType("stockmachine.live.recovery")
-
-        @dataclass(slots=True)
-        class _Plan:
-            aligned_count: int
-            orphan_count: int
-            stale_count: int
-
-        @dataclass(slots=True)
-        class _Reconciliation:
-            created_orders: int
-            updated_orders: int
-            fill_events_created: int
-
-        @dataclass(slots=True)
-        class _RecoveryResult:
-            plan: _Plan
-            reconciliation: _Reconciliation
-
-        def recover_open_orders(ledger: Any, open_orders: tuple[dict[str, Any], ...], reconciler: Any) -> _RecoveryResult:
-            del ledger, reconciler
-            count = len(open_orders)
-            return _RecoveryResult(
-                plan=_Plan(aligned_count=count, orphan_count=0, stale_count=0),
-                reconciliation=_Reconciliation(created_orders=0, updated_orders=0, fill_events_created=0),
-            )
-
-        recovery.recover_open_orders = recover_open_orders
-        sys.modules["stockmachine.live.recovery"] = recovery
-
-    if "stockmachine.live.session_guard" not in sys.modules:
-        session_guard = types.ModuleType("stockmachine.live.session_guard")
-
-        @dataclass(slots=True)
-        class SessionGuardRequest:
-            ledger: Any
-            strategy_name: str
-            session_date: Any
-            dry_run: bool
-            silver_session_dates: tuple[Any, ...]
-            allow_previous_available_session: bool
-
-        @dataclass(slots=True)
-        class SessionGuardResult:
-            allowed: bool
-            effective_session_date: Any
-            reasons: tuple[str, ...] = ()
-            details: dict[str, Any] | None = None
-
-            def to_dict(self) -> dict[str, Any]:
-                return {
-                    "allowed": self.allowed,
-                    "effective_session_date": self.effective_session_date.isoformat()
-                    if hasattr(self.effective_session_date, "isoformat")
-                    else self.effective_session_date,
-                    "reasons": list(self.reasons),
-                    "details": dict(self.details or {}),
-                }
-
-        class SessionGuard:
-            def __init__(self, ledger: Any) -> None:
-                self.ledger = ledger
-
-            def evaluate(self, request: SessionGuardRequest) -> SessionGuardResult:
-                return SessionGuardResult(
-                    allowed=True,
-                    effective_session_date=request.session_date,
-                    reasons=(),
-                    details={"dry_run": request.dry_run},
-                )
-
-        session_guard.SessionGuard = SessionGuard
-        session_guard.SessionGuardRequest = SessionGuardRequest
-        sys.modules["stockmachine.live.session_guard"] = session_guard
-
-
-_install_live_stubs()
-
 
 @pytest.fixture
 def isolated_project_root(tmp_path, monkeypatch):
     import execution.common.state_store as state_store
     import execution.common.strategy_runtime as strategy_runtime
-    import stockmachine.monitoring.healthcheck as healthcheck
+    import execution.managed.monitoring.healthcheck as healthcheck
 
     monkeypatch.setattr(state_store, "PROJECT_ROOT", tmp_path)
     monkeypatch.setattr(strategy_runtime, "PROJECT_ROOT", tmp_path)
@@ -251,3 +141,4 @@ def strategy_bundle_factory():
         }
 
     return _factory
+

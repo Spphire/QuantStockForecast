@@ -8,10 +8,10 @@ from pathlib import Path
 from typing import Any, Mapping, Sequence
 
 from execution.common.strategy_runtime import default_ledger_path, load_strategy_config
-from stockmachine.monitoring.alerts import build_operator_alerts
-from stockmachine.monitoring.healthcheck import build_paper_daily_healthcheck
-from stockmachine.monitoring.reports import PaperRunFailure, build_paper_run_report
-from stockmachine.state.ledger import LocalLedger
+from execution.managed.monitoring.alerts import build_operator_alerts
+from execution.managed.monitoring.healthcheck import build_paper_daily_healthcheck
+from execution.managed.monitoring.reports import PaperRunFailure, build_paper_run_report
+from execution.managed.state.ledger import LocalLedger
 
 
 def build_arg_parser() -> argparse.ArgumentParser:
@@ -172,3 +172,4 @@ def main(argv: Sequence[str] | None = None) -> int:
 
 if __name__ == "__main__":
     raise SystemExit(main())
+

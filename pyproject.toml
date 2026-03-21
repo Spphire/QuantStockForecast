@@ -26,8 +26,10 @@ dev = [
 ]
 
 [tool.pytest.ini_options]
-pythonpath = [".", "src"]
+pythonpath = ["."]
 testpaths = ["tests"]
 
 [tool.setuptools.packages.find]
-where = ["src"]
+where = ["."]
+include = ["execution*", "risk_management*", "model_prediction*", "data_module*"]
+exclude = ["tests*", "docs*", "configs*", "artifacts*"]

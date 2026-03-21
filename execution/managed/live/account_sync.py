@@ -6,7 +6,7 @@ from typing import Protocol, Sequence
 
 from execution.common.execution_models import PositionSnapshot
 
-from stockmachine.execution.brokers.alpaca import BrokerAccount, BrokerClock, BrokerPosition
+from execution.managed.brokers.alpaca import BrokerAccount, BrokerClock, BrokerPosition
 
 
 class BrokerAccountReader(Protocol):
@@ -111,3 +111,4 @@ def _normalize_mapping(value: object) -> dict[str, object]:
     if hasattr(value, "__dict__"):
         return {key: val for key, val in vars(value).items() if not key.startswith("_")}
     return {"repr": repr(value)}
+

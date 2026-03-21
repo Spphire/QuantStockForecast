@@ -7,8 +7,8 @@ from pathlib import Path
 from typing import Any, Mapping, Sequence
 
 from execution.common.strategy_runtime import default_ledger_path, load_strategy_config
-from stockmachine.apps.run_multi_expert_paper import run_strategy
-from stockmachine.monitoring.healthcheck import build_paper_daily_healthcheck
+from execution.managed.apps.run_multi_expert_paper import run_strategy
+from execution.managed.monitoring.healthcheck import build_paper_daily_healthcheck
 
 
 DEFAULT_KILL_SWITCH_NAME = "paper_daily.kill"
@@ -167,3 +167,4 @@ def main(argv: Sequence[str] | None = None) -> int:
 
 if __name__ == "__main__":
     raise SystemExit(main())
+
