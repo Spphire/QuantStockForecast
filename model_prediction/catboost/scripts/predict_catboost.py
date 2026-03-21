@@ -145,7 +145,6 @@ def main() -> int:
             feature_columns=feature_columns,
             categorical_columns=categorical_columns,
         )
-        prepared_df = prepared_df.dropna(subset=[target_return_column]).copy()
         if prepared_df.empty:
             raise ValueError("No rows remain after feature engineering and evaluation filtering.")
     except Exception as exc:

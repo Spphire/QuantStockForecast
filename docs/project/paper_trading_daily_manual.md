@@ -78,10 +78,16 @@ Paper 一般只需要：
 
 ### 日常实战策略
 
-- [us_zeroshot_a_share_daily.json](C:/Users/Apricity/Desktop/股票/execution/strategies/us_zeroshot_a_share_daily.json)
-- [us_full_daily.json](C:/Users/Apricity/Desktop/股票/execution/strategies/us_full_daily.json)
+- [us_zeroshot_a_share_multi_expert_daily.json](C:/Users/Apricity/Desktop/股票/execution/strategies/us_zeroshot_a_share_multi_expert_daily.json)
+- [us_full_multi_expert_daily.json](C:/Users/Apricity/Desktop/股票/execution/strategies/us_full_multi_expert_daily.json)
 
 这两份才是建议你后面每天运行时使用的配置。
+
+说明：
+
+- 旧的 [us_zeroshot_a_share_daily.json](C:/Users/Apricity/Desktop/股票/execution/strategies/us_zeroshot_a_share_daily.json) 和 [us_full_daily.json](C:/Users/Apricity/Desktop/股票/execution/strategies/us_full_daily.json)
+  仍然保留，主要作为单一 `LightGBM` 历史对照
+- 当前 paper 账户主线已经切到 `mixed-expert ensemble`
 
 ## 5. API Key 配置
 
@@ -205,16 +211,26 @@ python data_module/fetchers/scripts/fetch_stock_universe.py --provider stooq --s
 python data_module/fetchers/scripts/fetch_stock_metadata.py --provider wikipedia_sp500 --symbols-file configs/stock_universe_us_large_cap_30.txt --output-csv data/interim/stooq/universes/us_large_cap_30_metadata.csv
 ```
 
-### Step 3A: 生成 zero-shot 模型的最新预测
+### Step 3A: 生成 A 股训练五专家的最新预测
 
 ```powershell
-python model_prediction/lightgbm/scripts/predict_lightgbm.py data/interim/stooq/universes/us_large_cap_30_20200101_${endDateCompact}_hfq_normalized.csv --model-path model_prediction/lightgbm/artifacts/large_cap_50_20200101_20241231_hfq_normalized_regression_5d/model.txt --reference-metrics model_prediction/lightgbm/artifacts/large_cap_50_20200101_20241231_hfq_normalized_regression_5d/metrics.json --output-dir model_prediction/lightgbm/artifacts/us_zeroshot_daily --eval-start 2024-01-01 --eval-end $endDate
+python model_prediction/lightgbm/scripts/predict_lightgbm.py data/interim/stooq/universes/us_large_cap_30_20200101_${endDateCompact}_hfq_normalized.csv --model-path model_prediction/lightgbm/artifacts/large_cap_50_20200101_20241231_hfq_normalized_regression_5d/model.txt --reference-metrics model_prediction/lightgbm/artifacts/large_cap_50_20200101_20241231_hfq_normalized_regression_5d/metrics.json --output-dir model_prediction/lightgbm/artifacts/us_zeroshot_a_share_multi_daily --eval-start 2024-01-01 --eval-end $endDate
+python model_prediction/xgboost/scripts/predict_xgboost.py data/interim/stooq/universes/us_large_cap_30_20200101_${endDateCompact}_hfq_normalized.csv --model-path model_prediction/xgboost/artifacts/large_cap_50_20200101_20241231_hfq_normalized_regression_5d/model.json --reference-metrics model_prediction/xgboost/artifacts/large_cap_50_20200101_20241231_hfq_normalized_regression_5d/metrics.json --output-dir model_prediction/xgboost/artifacts/us_zeroshot_a_share_multi_daily --eval-start 2024-01-01 --eval-end $endDate
+python model_prediction/catboost/scripts/predict_catboost.py data/interim/stooq/universes/us_large_cap_30_20200101_${endDateCompact}_hfq_normalized.csv --model-path execution/experiments/us_a_share_expert_suite/catboost_regression_balanced/train/model.cbm --reference-metrics execution/experiments/us_a_share_expert_suite/catboost_regression_balanced/train/metrics.json --output-dir model_prediction/catboost/artifacts/us_zeroshot_a_share_multi_daily --eval-start 2024-01-01 --eval-end $endDate
+python model_prediction/lstm/scripts/predict_lstm.py data/interim/stooq/universes/us_large_cap_30_20200101_${endDateCompact}_hfq_normalized.csv --model-path execution/experiments/us_a_share_expert_suite/lstm_regression_balanced/train/model.pt --reference-metrics execution/experiments/us_a_share_expert_suite/lstm_regression_balanced/train/metrics.json --output-dir model_prediction/lstm/artifacts/us_zeroshot_a_share_multi_daily --eval-start 2024-01-01 --eval-end $endDate
+python model_prediction/transformer/scripts/predict_transformer.py data/interim/stooq/universes/us_large_cap_30_20200101_${endDateCompact}_hfq_normalized.csv --model-path execution/experiments/us_a_share_expert_suite/transformer_regression_balanced/train/model.pt --reference-metrics execution/experiments/us_a_share_expert_suite/transformer_regression_balanced/train/metrics.json --output-dir model_prediction/transformer/artifacts/us_zeroshot_a_share_multi_daily --eval-start 2024-01-01 --eval-end $endDate
+python model_prediction/ensemble/scripts/predict_ensemble.py model_prediction/lightgbm/artifacts/us_zeroshot_a_share_multi_daily/test_predictions.csv --prediction-csv model_prediction/xgboost/artifacts/us_zeroshot_a_share_multi_daily/test_predictions.csv --prediction-csv model_prediction/catboost/artifacts/us_zeroshot_a_share_multi_daily/test_predictions.csv --prediction-csv model_prediction/lstm/artifacts/us_zeroshot_a_share_multi_daily/test_predictions.csv --prediction-csv model_prediction/transformer/artifacts/us_zeroshot_a_share_multi_daily/test_predictions.csv --method mean_score --min-experts 5 --model-name ensemble_mean_score --output-dir model_prediction/ensemble/artifacts/us_zeroshot_a_share_multi_daily
 ```
 
-### Step 3B: 生成美股本地模型的最新预测
+### Step 3B: 生成美股全量训练五专家的最新预测
 
 ```powershell
-python model_prediction/lightgbm/scripts/predict_lightgbm.py data/interim/stooq/universes/us_large_cap_30_20200101_${endDateCompact}_hfq_normalized.csv --model-path model_prediction/lightgbm/artifacts/us_large_cap_30_full_regression_5d/model.txt --reference-metrics model_prediction/lightgbm/artifacts/us_large_cap_30_full_regression_5d/metrics.json --output-dir model_prediction/lightgbm/artifacts/us_full_daily --eval-start 2024-01-01 --eval-end $endDate
+python model_prediction/lightgbm/scripts/predict_lightgbm.py data/interim/stooq/universes/us_large_cap_30_20200101_${endDateCompact}_hfq_normalized.csv --model-path model_prediction/lightgbm/artifacts/us_large_cap_30_full_regression_5d/model.txt --reference-metrics model_prediction/lightgbm/artifacts/us_large_cap_30_full_regression_5d/metrics.json --output-dir model_prediction/lightgbm/artifacts/us_full_multi_expert_daily --eval-start 2024-01-01 --eval-end $endDate
+python model_prediction/xgboost/scripts/predict_xgboost.py data/interim/stooq/universes/us_large_cap_30_20200101_${endDateCompact}_hfq_normalized.csv --model-path model_prediction/xgboost/artifacts/us_large_cap_30_full_regression_5d/model.json --reference-metrics model_prediction/xgboost/artifacts/us_large_cap_30_full_regression_5d/metrics.json --output-dir model_prediction/xgboost/artifacts/us_full_multi_expert_daily --eval-start 2024-01-01 --eval-end $endDate
+python model_prediction/catboost/scripts/predict_catboost.py data/interim/stooq/universes/us_large_cap_30_20200101_${endDateCompact}_hfq_normalized.csv --model-path model_prediction/catboost/artifacts/us_large_cap_30_full_regression_5d/model.cbm --reference-metrics model_prediction/catboost/artifacts/us_large_cap_30_full_regression_5d/metrics.json --output-dir model_prediction/catboost/artifacts/us_full_multi_expert_daily --eval-start 2024-01-01 --eval-end $endDate
+python model_prediction/lstm/scripts/predict_lstm.py data/interim/stooq/universes/us_large_cap_30_20200101_${endDateCompact}_hfq_normalized.csv --model-path model_prediction/lstm/artifacts/us_large_cap_30_full_regression_5d/model.pt --reference-metrics model_prediction/lstm/artifacts/us_large_cap_30_full_regression_5d/metrics.json --output-dir model_prediction/lstm/artifacts/us_full_multi_expert_daily --eval-start 2024-01-01 --eval-end $endDate
+python model_prediction/transformer/scripts/predict_transformer.py data/interim/stooq/universes/us_large_cap_30_20200101_${endDateCompact}_hfq_normalized.csv --model-path model_prediction/transformer/artifacts/us_large_cap_30_full_regression_5d_lb20/model.pt --reference-metrics model_prediction/transformer/artifacts/us_large_cap_30_full_regression_5d_lb20/metrics.json --output-dir model_prediction/transformer/artifacts/us_full_multi_expert_daily --eval-start 2024-01-01 --eval-end $endDate
+python model_prediction/ensemble/scripts/predict_ensemble.py model_prediction/lightgbm/artifacts/us_full_multi_expert_daily/test_predictions.csv --prediction-csv model_prediction/xgboost/artifacts/us_full_multi_expert_daily/test_predictions.csv --prediction-csv model_prediction/catboost/artifacts/us_full_multi_expert_daily/test_predictions.csv --prediction-csv model_prediction/lstm/artifacts/us_full_multi_expert_daily/test_predictions.csv --prediction-csv model_prediction/transformer/artifacts/us_full_multi_expert_daily/test_predictions.csv --method mean_score --min-experts 5 --model-name ensemble_mean_score --output-dir model_prediction/ensemble/artifacts/us_full_multi_expert_daily
 ```
 
 ## 8. 每日目标仓位生成
@@ -222,13 +238,13 @@ python model_prediction/lightgbm/scripts/predict_lightgbm.py data/interim/stooq/
 ### 账户 A: zero-shot 每日目标仓位
 
 ```powershell
-python risk_management/white_box/scripts/run_white_box_risk.py model_prediction/lightgbm/artifacts/us_zeroshot_daily/test_predictions.csv --metadata-csv data/interim/stooq/universes/us_large_cap_30_metadata.csv --rebalance-step 1 --top-k 5 --min-score 0 --min-confidence 0.7 --min-close 5 --min-amount 100000000 --group-column industry_group --max-per-group 1 --secondary-group-column amount_bucket --secondary-max-per-group 2 --weighting score_confidence --max-position-weight 0.35 --transaction-cost-bps 10 --output-dir risk_management/white_box/runtime/us_zeroshot_daily
+python risk_management/white_box/scripts/run_white_box_risk.py model_prediction/ensemble/artifacts/us_zeroshot_a_share_multi_daily/test_predictions.csv --metadata-csv data/interim/stooq/universes/us_large_cap_30_metadata.csv --rebalance-step 1 --top-k 5 --min-score 0 --min-confidence 0.7 --min-close 5 --min-amount 100000000 --group-column industry_group --max-per-group 1 --secondary-group-column amount_bucket --secondary-max-per-group 2 --weighting score_confidence --max-position-weight 0.35 --transaction-cost-bps 10 --output-dir risk_management/white_box/runtime/us_zeroshot_a_share_multi_expert_daily
 ```
 
 ### 账户 B: 美股本地模型每日目标仓位
 
 ```powershell
-python risk_management/white_box/scripts/run_white_box_risk.py model_prediction/lightgbm/artifacts/us_full_daily/test_predictions.csv --metadata-csv data/interim/stooq/universes/us_large_cap_30_metadata.csv --rebalance-step 1 --top-k 5 --min-score 0 --min-confidence 0.7 --min-close 5 --min-amount 100000000 --group-column industry_group --max-per-group 1 --secondary-group-column amount_bucket --secondary-max-per-group 2 --weighting score_confidence --max-position-weight 0.35 --transaction-cost-bps 10 --output-dir risk_management/white_box/runtime/us_full_daily
+python risk_management/white_box/scripts/run_white_box_risk.py model_prediction/ensemble/artifacts/us_full_multi_expert_daily/test_predictions.csv --metadata-csv data/interim/stooq/universes/us_large_cap_30_metadata.csv --rebalance-step 1 --top-k 5 --min-score 0 --min-confidence 0.7 --min-close 5 --min-amount 100000000 --group-column industry_group --max-per-group 1 --secondary-group-column amount_bucket --secondary-max-per-group 2 --weighting score_confidence --max-position-weight 0.35 --transaction-cost-bps 10 --output-dir risk_management/white_box/runtime/us_full_multi_expert_daily
 ```
 
 这里最关键的就是：
@@ -242,13 +258,13 @@ python risk_management/white_box/scripts/run_white_box_risk.py model_prediction/
 ### zero-shot
 
 ```powershell
-python execution/scripts/run_paper_strategy.py execution/strategies/us_zeroshot_a_share_daily.json
+python execution/scripts/run_paper_strategy.py execution/strategies/us_zeroshot_a_share_multi_expert_daily.json
 ```
 
 ### us_full
 
 ```powershell
-python execution/scripts/run_paper_strategy.py execution/strategies/us_full_daily.json
+python execution/scripts/run_paper_strategy.py execution/strategies/us_full_multi_expert_daily.json
 ```
 
 生成的关键文件会在：
@@ -266,8 +282,8 @@ python execution/scripts/run_paper_strategy.py execution/strategies/us_full_dail
 如果你想看某条策略最近一次运行状态，可以直接执行：
 
 ```powershell
-python execution/scripts/show_strategy_state.py us_zeroshot_a_share_daily
-python execution/scripts/show_strategy_state.py us_full_daily
+python execution/scripts/show_strategy_state.py us_zeroshot_a_share_multi_expert_daily
+python execution/scripts/show_strategy_state.py us_full_multi_expert_daily
 ```
 
 ## 10. 确认无误后提交 paper 订单
@@ -275,13 +291,13 @@ python execution/scripts/show_strategy_state.py us_full_daily
 ### zero-shot 提交
 
 ```powershell
-python execution/scripts/run_paper_strategy.py execution/strategies/us_zeroshot_a_share_daily.json --submit
+python execution/scripts/run_paper_strategy.py execution/strategies/us_zeroshot_a_share_multi_expert_daily.json --submit
 ```
 
 ### us_full 提交
 
 ```powershell
-python execution/scripts/run_paper_strategy.py execution/strategies/us_full_daily.json --submit
+python execution/scripts/run_paper_strategy.py execution/strategies/us_full_multi_expert_daily.json --submit
 ```
 
 脚本会：
@@ -335,14 +351,14 @@ python execution/scripts/run_paper_strategy.py execution/strategies/us_full_dail
 如果你想快速看“上次到底下了什么、状态是什么”，可以直接运行：
 
 ```powershell
-python execution/scripts/show_strategy_state.py us_zeroshot_a_share_daily
-python execution/scripts/show_strategy_state.py us_full_daily
+python execution/scripts/show_strategy_state.py us_zeroshot_a_share_multi_expert_daily
+python execution/scripts/show_strategy_state.py us_full_multi_expert_daily
 ```
 
 你还可以顺手跑这个对比脚本：
 
 ```powershell
-python execution/scripts/compare_paper_strategies.py execution/strategies/us_zeroshot_a_share_daily.json execution/strategies/us_full_daily.json --output-csv execution/runtime/strategy_comparison_daily.csv
+python execution/scripts/compare_paper_strategies.py execution/strategies/us_zeroshot_a_share_multi_expert_daily.json execution/strategies/us_full_multi_expert_daily.json --output-csv execution/runtime/strategy_comparison_daily.csv
 ```
 
 ## 12. 建议的调度方式

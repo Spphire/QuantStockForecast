@@ -15,10 +15,14 @@
   共享数据结构、风控校验和持仓对账
 - [alpaca/README.md](C:/Users/Apricity/Desktop/股票/execution/alpaca/README.md)
   Alpaca 券商适配器
+- [strategies/us_zeroshot_a_share_multi_expert_daily.json](C:/Users/Apricity/Desktop/股票/execution/strategies/us_zeroshot_a_share_multi_expert_daily.json)
+  A 股训练五专家 ensemble 的美股 zero-shot 日常实战策略
+- [strategies/us_full_multi_expert_daily.json](C:/Users/Apricity/Desktop/股票/execution/strategies/us_full_multi_expert_daily.json)
+  美股全量训练五专家 ensemble 的日常实战策略
 - [strategies/us_zeroshot_a_share_regression_balanced.json](C:/Users/Apricity/Desktop/股票/execution/strategies/us_zeroshot_a_share_regression_balanced.json)
-  A 股训练后 zero-shot 到美股的 paper 主策略
+  历史研究/实验对照策略
 - [strategies/us_full_regression_balanced.json](C:/Users/Apricity/Desktop/股票/execution/strategies/us_full_regression_balanced.json)
-  美股全量训练的 paper 策略
+  历史研究/实验对照策略
 - [scripts/run_paper_strategy.py](C:/Users/Apricity/Desktop/股票/execution/scripts/run_paper_strategy.py)
   生成或提交 paper 订单计划
 - [scripts/compare_paper_strategies.py](C:/Users/Apricity/Desktop/股票/execution/scripts/compare_paper_strategies.py)
@@ -28,17 +32,39 @@
 
 ## 当前策略线
 
+当前 paper 账户主线已经切到 `mixed-expert ensemble`，不是之前的单一 `LightGBM daily`。
+
 ### Strategy A
 
+- `us_zeroshot_a_share_multi_expert_daily`
+- 上游来源：A 股训练的 `lightgbm / xgboost / catboost / lstm / transformer`
+- 聚合方式：`ensemble_mean_score`
+- 最新风控来源：
+  [risk_summary.json](C:/Users/Apricity/Desktop/股票/risk_management/white_box/runtime/us_zeroshot_a_share_multi_expert_daily/risk_summary.json)
+- 最新执行状态：
+  [latest_state.json](C:/Users/Apricity/Desktop/股票/execution/state/us_zeroshot_a_share_multi_expert_daily/latest_state.json)
+
+历史研究对照：
+
 - `us_zeroshot_a_share_regression_balanced`
-- 上游来源：A 股训练回归模型 zero-shot 到美股
+- 上游来源：A 股训练单模型 zero-shot 到美股
 - 上游风控来源：
   [risk_summary.json](C:/Users/Apricity/Desktop/股票/risk_management/white_box/experiments/us_zeroshot_aligned_suite/regression_balanced/risk_summary.json)
 
 ### Strategy B
 
+- `us_full_multi_expert_daily`
+- 上游来源：美股全量训练的 `lightgbm / xgboost / catboost / lstm / transformer`
+- 聚合方式：`ensemble_mean_score`
+- 最新风控来源：
+  [risk_summary.json](C:/Users/Apricity/Desktop/股票/risk_management/white_box/runtime/us_full_multi_expert_daily/risk_summary.json)
+- 最新执行状态：
+  [latest_state.json](C:/Users/Apricity/Desktop/股票/execution/state/us_full_multi_expert_daily/latest_state.json)
+
+历史研究对照：
+
 - `us_full_regression_balanced`
-- 上游来源：美股全量历史训练的回归模型
+- 上游来源：美股全量训练的单模型回归策略
 - 上游风控来源：
   [risk_summary.json](C:/Users/Apricity/Desktop/股票/risk_management/white_box/experiments/us_full_suite/regression_balanced/risk_summary.json)
 
@@ -47,9 +73,9 @@
 先 dry-run 生成两条计划：
 
 ```powershell
-python execution/scripts/run_paper_strategy.py execution/strategies/us_zeroshot_a_share_regression_balanced.json
-python execution/scripts/run_paper_strategy.py execution/strategies/us_full_regression_balanced.json
-python execution/scripts/compare_paper_strategies.py execution/strategies/us_zeroshot_a_share_regression_balanced.json execution/strategies/us_full_regression_balanced.json
+python execution/scripts/run_paper_strategy.py execution/strategies/us_zeroshot_a_share_multi_expert_daily.json
+python execution/scripts/run_paper_strategy.py execution/strategies/us_full_multi_expert_daily.json
+python execution/scripts/compare_paper_strategies.py execution/strategies/us_zeroshot_a_share_multi_expert_daily.json execution/strategies/us_full_multi_expert_daily.json
 ```
 
 等你真的开好两个 Alpaca paper account 后，再把 `--submit` 打开。
@@ -104,6 +130,6 @@ python execution/scripts/compare_paper_strategies.py execution/strategies/us_zer
 如果你想在关闭进程后快速看当前策略状态，可以运行：
 
 ```powershell
-python execution/scripts/show_strategy_state.py us_zeroshot_a_share_daily
-python execution/scripts/show_strategy_state.py us_full_daily
+python execution/scripts/show_strategy_state.py us_zeroshot_a_share_multi_expert_daily
+python execution/scripts/show_strategy_state.py us_full_multi_expert_daily
 ```

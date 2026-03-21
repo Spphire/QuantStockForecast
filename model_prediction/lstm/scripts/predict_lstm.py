@@ -129,7 +129,7 @@ def main() -> int:
             target_column = inferred_target_column
         if inferred_target_return_column != target_return_column:
             target_return_column = inferred_target_return_column
-        prepared_df = feature_df.dropna(subset=[target_return_column]).copy()
+        prepared_df = feature_df.copy()
         prepared_df = prepared_df.sort_values(["symbol", "date"], kind="stable").reset_index(drop=True)
         normalized_full = normalizer.transform(prepared_df)
         X_all, y_all, meta_all = build_sequence_samples(
@@ -138,6 +138,7 @@ def main() -> int:
             seq_len,
             target_column,
             target_return_column=target_return_column,
+            include_missing_target=True,
         )
         if len(X_all) == 0:
             raise ValueError("No sequence samples remain after feature preparation.")

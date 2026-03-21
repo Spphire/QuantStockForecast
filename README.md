@@ -23,9 +23,10 @@
 
 - 数据源：`Stooq` 日线
 - 股票池：`configs/stock_universe_us_large_cap_30.txt`
-- 做法：直接把 A 股训练好的 LightGBM 模型零样本迁移到美股
+- 做法：把 A 股训练好的单 expert 或 mixed-expert 模型零样本迁移到美股
 - 已验证：
   - `regression` zero-shot 仍有一定迁移能力
+  - `mixed-expert ensemble` 已接入双 Alpaca paper 账户日常策略
   - `ranking` zero-shot 明显弱于回归版
   - 白盒风控和回测链路可以不改架构直接复用
 

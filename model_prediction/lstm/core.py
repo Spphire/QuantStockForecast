@@ -363,6 +363,7 @@ def build_sequence_samples(
     *,
     target_return_column: str = "",
     extra_columns: Sequence[str] | None = None,
+    include_missing_target: bool = False,
 ) -> tuple[np.ndarray, np.ndarray, pd.DataFrame]:
     working = df.copy()
     working["date"] = pd.to_datetime(working["date"], errors="coerce")
@@ -398,11 +399,11 @@ def build_sequence_samples(
             if not np.isfinite(window).all():
                 continue
             target_value = target_block[end_index]
-            if not np.isfinite(target_value):
+            if not include_missing_target and not np.isfinite(target_value):
                 continue
 
             samples.append(window.astype(np.float32, copy=False))
-            targets.append(float(target_value))
+            targets.append(float(target_value) if np.isfinite(target_value) else float("nan"))
             row = group.loc[end_index, meta_columns].to_dict()
             row["sequence_length"] = int(seq_len)
             row["symbol"] = str(row.get("symbol", symbol))
@@ -575,4 +576,3 @@ def build_default_config(
         "train_ratio": train_ratio,
         "valid_ratio": valid_ratio,
     }
-

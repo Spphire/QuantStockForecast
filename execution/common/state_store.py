@@ -7,6 +7,7 @@ from pathlib import Path
 from typing import Any
 
 import pandas as pd
+from pandas.errors import EmptyDataError
 
 
 PROJECT_ROOT = Path(__file__).resolve().parents[2]
@@ -21,7 +22,10 @@ def strategy_state_dir(strategy_id: str) -> Path:
 def append_journal_row(path: Path, row: dict[str, Any]) -> None:
     frame = pd.DataFrame([row])
     if path.exists():
-        existing = pd.read_csv(path, encoding="utf-8-sig")
+        try:
+            existing = pd.read_csv(path, encoding="utf-8-sig")
+        except EmptyDataError:
+            existing = pd.DataFrame()
         combined = pd.concat([existing, frame], ignore_index=True)
     else:
         combined = frame
@@ -55,7 +59,10 @@ def write_order_journal(strategy_id: str, rows: list[dict[str, Any]]) -> str:
     if rows:
         frame = pd.DataFrame(rows)
         if journal_path.exists():
-            existing = pd.read_csv(journal_path, encoding="utf-8-sig")
+            try:
+                existing = pd.read_csv(journal_path, encoding="utf-8-sig")
+            except EmptyDataError:
+                existing = pd.DataFrame()
             frame = pd.concat([existing, frame], ignore_index=True)
         frame.to_csv(journal_path, index=False, encoding="utf-8")
     elif not journal_path.exists():

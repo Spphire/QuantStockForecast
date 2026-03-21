@@ -28,6 +28,10 @@
 
 - 操作手册：
   [paper_trading_daily_manual.md](C:/Users/Apricity/Desktop/股票/docs/project/paper_trading_daily_manual.md)
+- 当前主线策略：
+  [us_zeroshot_a_share_multi_expert_daily.json](C:/Users/Apricity/Desktop/股票/execution/strategies/us_zeroshot_a_share_multi_expert_daily.json)
+  和
+  [us_full_multi_expert_daily.json](C:/Users/Apricity/Desktop/股票/execution/strategies/us_full_multi_expert_daily.json)
 - 执行模块总览：
   [execution/README.md](C:/Users/Apricity/Desktop/股票/execution/README.md)
 - Alpaca 适配器：

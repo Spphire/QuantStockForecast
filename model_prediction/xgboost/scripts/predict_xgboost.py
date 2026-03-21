@@ -120,7 +120,7 @@ def main() -> int:
         feature_df, _ = add_xgboost_style_features(feature_df)
         feature_df = filter_eval_period(feature_df, args.eval_start, args.eval_end)
         feature_df = ensure_feature_columns(feature_df, feature_columns)
-        prepared_df = feature_df.dropna(subset=feature_columns).copy()
+        prepared_df = feature_df.copy()
         if prepared_df.empty:
             raise ValueError("No rows remain after feature engineering and evaluation filtering.")
     except Exception as exc:

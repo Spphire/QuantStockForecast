@@ -26,6 +26,13 @@
 - `ALPACA_US_FULL_SECRET_KEY`
 - `ALPACA_US_FULL_BASE_URL`
 
+当前这两个前缀默认对应的是：
+
+- `ALPACA_ZERO_SHOT`
+  [us_zeroshot_a_share_multi_expert_daily.json](C:/Users/Apricity/Desktop/股票/execution/strategies/us_zeroshot_a_share_multi_expert_daily.json)
+- `ALPACA_US_FULL`
+  [us_full_multi_expert_daily.json](C:/Users/Apricity/Desktop/股票/execution/strategies/us_full_multi_expert_daily.json)
+
 默认 `BASE_URL` 可以填：
 
 - paper: `https://paper-api.alpaca.markets`
@@ -74,3 +81,19 @@
 - 保存 `submission_attempts.json`
 - 保存 `submitted_order_statuses.json`
 - 在 `show_strategy_state.py` 里展示最近订单状态
+
+## 当前运行状态
+
+截至 `2026-03-22`，两个 paper 账户已经从旧的 `LightGBM daily` 切到了 `mixed-expert ensemble daily`：
+
+- `ALPACA_ZERO_SHOT`
+  对应 `A股训练五专家 -> 美股 zero-shot`
+- `ALPACA_US_FULL`
+  对应 `美股全量训练五专家 -> 美股执行`
+
+最新状态和订单流水分别保存在：
+
+- [us_zeroshot latest_state.json](C:/Users/Apricity/Desktop/股票/execution/state/us_zeroshot_a_share_multi_expert_daily/latest_state.json)
+- [us_zeroshot order_journal.csv](C:/Users/Apricity/Desktop/股票/execution/state/us_zeroshot_a_share_multi_expert_daily/order_journal.csv)
+- [us_full latest_state.json](C:/Users/Apricity/Desktop/股票/execution/state/us_full_multi_expert_daily/latest_state.json)
+- [us_full order_journal.csv](C:/Users/Apricity/Desktop/股票/execution/state/us_full_multi_expert_daily/order_journal.csv)
