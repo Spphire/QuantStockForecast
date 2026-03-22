@@ -1,6 +1,0 @@
-expert,scope,train_rows,train_symbols,train_directional_accuracy,train_correlation,zero_shot_rows,zero_shot_symbols,zero_shot_directional_accuracy,zero_shot_correlation,risk_total_return,risk_benchmark_total_return,risk_excess_return,risk_max_drawdown,execution_total_return,execution_benchmark_total_return,execution_excess_return,execution_max_drawdown,notes
-lightgbm,full aligned,50944,64,0.4949421965,0.1088940636,6510,30,0.5221198157,0.0408964887,1.5262,0.8522,0.6740,-0.5243,-0.0133,0.8522,-0.8655,-0.2147,full aligned 64-symbol run
-xgboost,smoke subset,8030,10,0.5063583815,0.1121656563,15060,30,0.5551792829,0.1252445996,46.3461469566,8.6291603843,37.7169865723,-0.6180046473,0.9932494400,8.6291603843,-7.6359109443,-0.2050931709,smoke-grade train set; downstream chain validated
-catboost,smoke subset,8440,10,0.4857142857,-0.0663549904,6510,30,0.5467,0.1566,0.7689,-0.0565,0.8255,-0.4991,-0.2289,-0.0565,-0.1724,-0.2510,smoke-grade train set; downstream chain validated
-lstm,smoke subset,8440,10,0.5115662651,0.0687443815,6510,30,0.4908,0.0775,1.3517,0.6117,0.7400,-0.6231,0.0854,0.6117,-0.5263,-0.2216,smoke-grade train set; downstream chain validated
-transformer,full aligned,53568,64,0.5276442308,0.0732778386,5940,30,0.4961279461,0.0208411243,2.1758,1.8358,0.3400,-0.4725,0.2839,1.8358,-1.5519,-0.1749,full aligned 64-symbol run

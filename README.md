@@ -1,102 +1,53 @@
-# 股票预测项目上下文
+# QuantStockForecast
 
-这是一个面向 **A 股优先、跨市场可迁移** 的股票研究项目。当前项目已经跑通了从 `数据抓取 -> 标准化 -> 模型训练/zero-shot 预测 -> 白盒风控 -> 回测` 的完整闭环，并且已经在 A 股和美股上做过真实实验。
+面向股票研究与 Paper Trading 的模块化量化项目，主线链路为：
 
-## 当前目标
+`数据抓取与标准化 -> 多 expert 预测 -> 白盒风控 -> 执行运行时`
 
-- 让 `data_module` 统一管理股票数据拉取、元数据拉取和标准化
-- 让 `model_prediction` 专注产生统一格式的 `signal`
-- 让 `risk_management` 用白盒规则把 `signal` 转成组合和收益曲线
-- 保持每个模块都可以单独迭代，同时通过稳定接口对接
+## 模块分层
 
-## 当前已验证主线
+- `data_module/`
+  - 数据抓取、元数据抓取、统一 schema 标准化
+- `model_prediction/`
+  - lightgbm/xgboost/catboost/lstm/transformer/ensemble
+- `risk_management/white_box/`
+  - 信号过滤、选股、仓位、换手、回测统计
+- `execution/`
+  - Alpaca 适配、策略运行、账本、运维工具
 
-### A 股
+## 快速入口
 
-- 数据源：`AKShare + Eastmoney/Sina fallback`
-- 研究市场：A 股大盘股池
-- 主线模型：`LightGBM regression/ranking`
-- 风控方式：白盒规则过滤、行业/流动性约束、平滑加减仓
-- 已完成多组曲线实验和实验报告
+安装：
 
-### 美股 zero-shot
+```powershell
+python -m pip install -e .
+python -m pip install -e .[dev]
+```
 
-- 数据源：`Stooq` 日线
-- 股票池：`configs/stock_universe_us_large_cap_30.txt`
-- 做法：把 A 股训练好的单 expert 或 mixed-expert 模型零样本迁移到美股
-- 已验证：
-  - `regression` zero-shot 仍有一定迁移能力
-  - `mixed-expert ensemble` 已接入双 Alpaca paper 账户日常策略
-  - `ranking` zero-shot 明显弱于回归版
-  - 白盒风控和回测链路可以不改架构直接复用
+研究流水线（生成 `risk_positions.csv`）：
 
-## 项目模块
+```powershell
+powershell -ExecutionPolicy Bypass -File .\execution\scripts\windows\invoke_daily_research_pipeline.ps1 -IgnoreTimeWindow
+```
 
-- [data_module/README.md](C:/Users/Apricity/Desktop/股票/data_module/README.md)
-  数据层总览
-- [data_module/common/README.md](C:/Users/Apricity/Desktop/股票/data_module/common/README.md)
-  共享 schema 与标准化契约
-- [data_module/fetchers/README.md](C:/Users/Apricity/Desktop/股票/data_module/fetchers/README.md)
-  数据抓取与元数据抓取
-- [data_module/cleaning/README.md](C:/Users/Apricity/Desktop/股票/data_module/cleaning/README.md)
-  清洗模块规划
-- [data_module/crawlers/README.md](C:/Users/Apricity/Desktop/股票/data_module/crawlers/README.md)
-  爬虫模块规划
-- [data_module/features/README.md](C:/Users/Apricity/Desktop/股票/data_module/features/README.md)
-  特征层规划
-- [model_prediction/README.md](C:/Users/Apricity/Desktop/股票/model_prediction/README.md)
-  预测层总览
-- [model_prediction/common/README.md](C:/Users/Apricity/Desktop/股票/model_prediction/common/README.md)
-  统一 signal 接口
-- [model_prediction/lightgbm/README.md](C:/Users/Apricity/Desktop/股票/model_prediction/lightgbm/README.md)
-  LightGBM 已实现主线
-- [model_prediction/xgboost/README.md](C:/Users/Apricity/Desktop/股票/model_prediction/xgboost/README.md)
-  XGBoost 规划
-- [model_prediction/catboost/README.md](C:/Users/Apricity/Desktop/股票/model_prediction/catboost/README.md)
-  CatBoost 规划
-- [model_prediction/lstm/README.md](C:/Users/Apricity/Desktop/股票/model_prediction/lstm/README.md)
-  LSTM 规划
-- [model_prediction/transformer/README.md](C:/Users/Apricity/Desktop/股票/model_prediction/transformer/README.md)
-  Transformer 规划
-- [risk_management/README.md](C:/Users/Apricity/Desktop/股票/risk_management/README.md)
-  风控层总览
-- [risk_management/common/README.md](C:/Users/Apricity/Desktop/股票/risk_management/common/README.md)
-  风控共享能力规划
-- [risk_management/white_box/README.md](C:/Users/Apricity/Desktop/股票/risk_management/white_box/README.md)
-  白盒风控已实现主线
-- [execution/README.md](C:/Users/Apricity/Desktop/股票/execution/README.md)
-  实战执行层总览
-- [execution/common/README.md](C:/Users/Apricity/Desktop/股票/execution/common/README.md)
-  执行层共享模型和校验
-- [execution/alpaca/README.md](C:/Users/Apricity/Desktop/股票/execution/alpaca/README.md)
-  Alpaca 适配器和双 paper strategy
+Paper 运行（健康检查 + dry-run / submit）：
+
+```powershell
+python -m execution.managed.apps.paper_daily execution/strategies/us_zeroshot_a_share_multi_expert_daily.json healthcheck
+python -m execution.managed.apps.paper_daily execution/strategies/us_zeroshot_a_share_multi_expert_daily.json run
+```
 
 ## 文档导航
 
-- [docs/README.md](C:/Users/Apricity/Desktop/股票/docs/README.md)
-  文档总入口，按项目说明 / 实验报告 / 开发日志分组
-- [project/architecture_overview.md](C:/Users/Apricity/Desktop/股票/docs/project/architecture_overview.md)
-  项目整体架构与模块边界
-- [project/usage_guide.md](C:/Users/Apricity/Desktop/股票/docs/project/usage_guide.md)
-  常用研究、回测与 paper trading 使用说明
-- [experiments/us_a_share_multi_expert_report.md](C:/Users/Apricity/Desktop/股票/docs/experiments/us_a_share_multi_expert_report.md)
-  最新多专家 A 股训练 -> 美股 zero-shot 报告
+- [文档首页](docs/README.md)
+- [快速开始](docs/quickstart.md)
+- [架构总览](docs/architecture/overview.md)
+- [模块说明](docs/modules/data_module.md)
+- [研究流水线](docs/workflows/research-pipeline.md)
+- [Paper Daily 流程](docs/workflows/paper-trading-daily.md)
+- [Windows 调度](docs/operations/windows-scheduler.md)
+- [测试与回归](docs/quality/testing.md)
 
-## 当前最重要的接口约束
+## 历史资料
 
-- 数据标准化输出要遵守 `data_module/common/stock_schema.py`
-- 预测输出要能被 `model_prediction/common/signal_interface.py` 识别
-- 白盒风控默认消费模型产出的 `test_predictions.csv`
-- 执行层默认消费 `risk_positions.csv` 的最新调仓目标
-
-## 当前现实结论
-
-- 这个项目已经不是“只有想法和结构”，而是有可复现实验结果的研究骨架
-- 目前最稳的方向仍然是：
-  - 市场先做日线股票池
-  - 模型先做横截面收益预测
-  - 组合和风险约束放在模型外部
-- 未来如果继续扩展，最值得优先做的是：
-  - 更完整的特征工程模块
-  - 更严格的 walk-forward 验证
-  - 更真实的组合与执行约束
+旧版 docs 已完整备份到 `docs_backup_2026-03-22/`，用于追溯历史实验与开发日志。
