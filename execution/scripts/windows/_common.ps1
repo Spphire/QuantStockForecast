@@ -111,7 +111,8 @@ function Invoke-OperationBrief {
         [string]$Title = "",
         [ValidateSet("success", "partial", "failed")]
         [string]$Status = "success",
-        [string[]]$Notes = @()
+        [string[]]$Notes = @(),
+        [switch]$Notify
     )
 
     $arguments = @(
@@ -121,6 +122,9 @@ function Invoke-OperationBrief {
     )
     if (-not [string]::IsNullOrWhiteSpace($Title)) {
         $arguments += @("--title", $Title)
+    }
+    if ($Notify) {
+        $arguments += "--notify"
     }
     foreach ($note in $Notes) {
         if (-not [string]::IsNullOrWhiteSpace($note)) {

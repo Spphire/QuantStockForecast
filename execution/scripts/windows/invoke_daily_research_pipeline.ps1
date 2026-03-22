@@ -278,10 +278,8 @@ finally {
             -StrategyConfigs $StrategyConfigs `
             -Title ("Nightly Research Brief - " + $DataEndDate) `
             -Status $briefStatus `
-            -Notes $briefNotes.ToArray()
-        if ($null -ne $briefPayload) {
-            Publish-OperationBriefNotification -BriefPayload $briefPayload
-        }
+            -Notes $briefNotes.ToArray() `
+            -Notify
     }
     catch {
         if ($null -eq $fatalError) {

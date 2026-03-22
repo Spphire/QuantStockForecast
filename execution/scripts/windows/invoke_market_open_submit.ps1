@@ -119,10 +119,8 @@ finally {
             -StrategyConfigs $StrategyConfigs `
             -Title ("Market Open Submit Brief - " + $nyNow.ToString("yyyy-MM-dd")) `
             -Status $briefStatus `
-            -Notes $briefNotes.ToArray()
-        if ($null -ne $briefPayload) {
-            Publish-OperationBriefNotification -BriefPayload $briefPayload
-        }
+            -Notes $briefNotes.ToArray() `
+            -Notify
     }
     catch {
         if ($null -eq $fatalError) {

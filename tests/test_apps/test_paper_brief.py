@@ -5,6 +5,7 @@ import json
 from pathlib import Path
 
 from execution.managed.apps import paper_brief
+from execution.managed.monitoring.briefing import build_feishu_post_payload
 
 
 def test_research_brief_generates_visual_artifacts(
@@ -52,6 +53,24 @@ def test_research_brief_generates_visual_artifacts(
     assert payload["summary"]["positive_target_count"] == 2
     assert payload["summary"]["exit_count"] == 1
     assert payload["strategies"][0]["source_summary"]["model_name"] == "demo_research"
+    markdown_text = Path(payload["markdown_path"]).read_text(encoding="utf-8")
+    assert "调仓日期" in markdown_text
+    assert "下一步建议" in markdown_text
+    brief_json = json.loads(Path(payload["json_path"]).read_text(encoding="utf-8"))
+    post_payload = build_feishu_post_payload(
+        brief=brief_json,
+        run_dir=Path(payload["run_dir"]),
+        html_path=Path(payload["html_path"]),
+    )
+    assert post_payload["msg_type"] == "post"
+    research_text = "\n".join(
+        block["text"]
+        for row in post_payload["content"]["post"]["zh_cn"]["content"]
+        for block in row
+        if block.get("tag") == "text"
+    )
+    assert "总览：" in research_text
+    assert "重点仓位：" in research_text
 
 
 def test_submit_brief_reads_latest_state_and_order_statuses(
@@ -153,3 +172,12 @@ def test_submit_brief_reads_latest_state_and_order_statuses(
     assert strategy_payload["open_order_count"] == 1
     assert strategy_payload["account"]["buying_power"] == 103000.0
     assert strategy_payload["alerts"][0]["code"] == "open_orders_lingering"
+
+    brief_json = json.loads(Path(payload["json_path"]).read_text(encoding="utf-8"))
+    post_payload = build_feishu_post_payload(
+        brief=brief_json,
+        run_dir=Path(payload["run_dir"]),
+        html_path=Path(payload["html_path"]),
+    )
+    assert post_payload["msg_type"] == "post"
+    assert post_payload["content"]["post"]["zh_cn"]["title"] == "Submit Test Brief"
