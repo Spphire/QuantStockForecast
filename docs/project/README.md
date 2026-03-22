@@ -16,6 +16,8 @@
   看 LightGBM 基线的数据对齐链路
 - [paper_trading_daily_manual.md](C:/Users/Apricity/Desktop/股票/docs/project/paper_trading_daily_manual.md)
   看 paper trading 日常操作
+- [windows_scheduler_guide.md](C:/Users/Apricity/Desktop/QuantStockForecast/docs/project/windows_scheduler_guide.md)
+  看 Windows 任务计划程序的落地方式
 - [full_validation_2026-03-22.md](C:/Users/Apricity/Desktop/股票/docs/project/full_validation_2026-03-22.md)
   看 2026-03-22 这轮融合后的完整验证结果
 
