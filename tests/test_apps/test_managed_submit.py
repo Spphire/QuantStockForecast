@@ -1,9 +1,12 @@
 from __future__ import annotations
 
+import argparse
+import json
 from dataclasses import dataclass
 from pathlib import Path
 
 from execution.common.execution_models import SubmittedOrder
+from execution.managed.apps import paper_ops
 from execution.managed.apps import run_multi_expert_paper as runner
 
 
@@ -127,4 +130,119 @@ def test_submit_ignores_existing_open_orders_when_cancel_first(
     assert result.summary["validation"]["blocked_count"] == 0
     assert result.summary["validation"]["open_orders_considered"] == 0
     assert result.summary["submitted_count"] == 1
+
+
+def test_submit_attaches_new_broker_orders_to_latest_run_even_when_client_ids_differ(
+    isolated_project_root,
+    monkeypatch,
+    strategy_bundle_factory,
+    tmp_path: Path,
+) -> None:
+    bundle = strategy_bundle_factory(tmp_path)
+    ledger_path = tmp_path / "paper_ledger.sqlite3"
+
+    monkeypatch.setattr(runner, "load_alpaca_credentials", lambda prefix: {"prefix": prefix})
+    monkeypatch.setattr(runner, "AlpacaBroker", lambda credentials: _FakeBroker())
+    monkeypatch.setattr(
+        runner,
+        "save_account_snapshot",
+        lambda broker, run_dir, prefix="pre": {},
+    )
+
+    def fake_submit_execution_plan(broker, plan, **kwargs):
+        order = plan.order_intents[0]
+        return {
+            "submitted_orders": [
+                SubmittedOrder(
+                    order_id="submitted-1",
+                    client_order_id="external-client-1",
+                    symbol=order.symbol,
+                    side=order.side,
+                    status="accepted",
+                )
+            ],
+            "attempt_logs": [
+                {
+                    "symbol": order.symbol,
+                    "side": order.side,
+                    "attempt": 1,
+                    "client_order_id": "external-client-1",
+                    "submit_as": order.submit_as,
+                    "requested_notional": order.submit_notional,
+                    "requested_qty": order.submit_qty,
+                    "estimated_qty": order.estimated_qty,
+                    "delta_notional": order.delta_notional,
+                    "reference_price": order.reference_price,
+                    "submitted": True,
+                    "status": "accepted",
+                    "order_id": "submitted-1",
+                    "error_message": "",
+                    "note": order.reason,
+                }
+            ],
+            "order_statuses": [
+                {
+                    "id": "submitted-1",
+                    "client_order_id": "external-client-1",
+                    "symbol": order.symbol,
+                    "side": order.side,
+                    "status": "accepted",
+                    "qty": "1",
+                    "filled_qty": "0",
+                    "submitted_at": "2026-03-21T14:00:01Z",
+                    "updated_at": "2026-03-21T14:00:02Z",
+                    "type": "market",
+                }
+            ],
+        }
+
+    monkeypatch.setattr(runner, "submit_execution_plan", fake_submit_execution_plan)
+
+    result = runner.run_strategy(
+        bundle["strategy_config"],
+        session_date_override="2026-03-21",
+        submit=True,
+        output_dir=str(tmp_path / "runtime"),
+        ledger_path=str(ledger_path),
+        skip_session_guard=True,
+        require_paper=True,
+    )
+
+    payload = paper_ops.dispatch_command(
+        argparse.Namespace(
+            strategy_config=str(bundle["strategy_config"]),
+            command="open-orders",
+            ledger_path=str(ledger_path),
+        )
+    )
+
+    assert payload["run_id"] == result.summary["run_id"]
+    assert payload["count"] == 1
+    assert payload["open_orders"][0]["order_id"] == "submitted-1"
+    assert payload["open_orders"][0]["client_order_id"] == "external-client-1"
+
+
+def test_latest_runtime_run_summary_matches_current_run(
+    isolated_project_root,
+    strategy_bundle_factory,
+    tmp_path: Path,
+) -> None:
+    bundle = strategy_bundle_factory(tmp_path)
+
+    result = runner.run_strategy(
+        bundle["strategy_config"],
+        session_date_override="2026-03-21",
+        submit=False,
+        account_equity_override=100000.0,
+        output_dir="",
+        ledger_path=str(tmp_path / "paper_ledger.sqlite3"),
+        skip_session_guard=True,
+    )
+
+    latest_summary_path = Path(result.summary["latest_runtime_dir"]) / "run_summary.json"
+    latest_summary = json.loads(latest_summary_path.read_text(encoding="utf-8"))
+
+    assert latest_summary["run_id"] == result.summary["run_id"]
+    assert latest_summary["latest_state_path"] == result.summary["latest_state_path"]
+    assert latest_summary["order_journal_path"] == result.summary["order_journal_path"]
 

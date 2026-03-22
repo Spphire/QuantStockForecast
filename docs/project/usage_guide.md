@@ -28,6 +28,8 @@
 
 - 操作手册：
   [paper_trading_daily_manual.md](C:/Users/Apricity/Desktop/股票/docs/project/paper_trading_daily_manual.md)
+- 最新验证报告：
+  [full_validation_2026-03-22.md](C:/Users/Apricity/Desktop/QuantStockForecast/docs/project/full_validation_2026-03-22.md)
 - 当前主线策略：
   [us_zeroshot_a_share_multi_expert_daily.json](C:/Users/Apricity/Desktop/股票/execution/strategies/us_zeroshot_a_share_multi_expert_daily.json)
   和

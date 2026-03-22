@@ -90,6 +90,10 @@ python execution/scripts/compare_paper_strategies.py execution/strategies/us_zer
 
 等你真的开好两个 Alpaca paper account 后，再把 `--submit` 打开。
 
+最新完整验证记录见：
+
+- [full_validation_2026-03-22.md](C:/Users/Apricity/Desktop/QuantStockForecast/docs/project/full_validation_2026-03-22.md)
+
 ## 当前边界
 
 这层目前只负责：

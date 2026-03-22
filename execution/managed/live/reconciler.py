@@ -1,7 +1,7 @@
 from __future__ import annotations
 
 from dataclasses import dataclass, field
-from datetime import datetime, timezone
+from datetime import date, datetime, timezone
 from typing import Any, Mapping, Sequence
 import re
 
@@ -173,6 +173,9 @@ class PollingOrderReconciler:
         self,
         broker_orders: Sequence[Mapping[str, Any] | BrokerOrderSnapshot | object],
         broker_fills: Sequence[Mapping[str, Any] | BrokerFillSnapshot | object] | None = None,
+        *,
+        default_run_id: str | None = None,
+        default_session_date: date | None = None,
     ) -> ReconciliationResult:
         changes: list[OrderReconciliationChange] = []
         created_orders = 0
@@ -185,11 +188,26 @@ class PollingOrderReconciler:
             local = self.ledger.get_order(snapshot.order_id)
             if local is None and snapshot.client_order_id is not None:
                 local = self.ledger.get_order_by_client_order_id(snapshot.client_order_id)
+            decision = None
+            if local is None and snapshot.client_order_id is not None:
+                decisions = self.ledger.list_order_decisions(client_order_id=snapshot.client_order_id)
+                if decisions:
+                    decision = decisions[-1]
 
             previous_status = local.status if local is not None else None
             previous_filled_quantity = local.filled_quantity if local is not None else 0.0
             fill_delta = max(snapshot.filled_quantity - previous_filled_quantity, 0.0)
             is_new = local is None
+            resolved_run_id = (
+                local.run_id
+                if local is not None
+                else (decision.run_id if decision is not None else default_run_id)
+            )
+            resolved_session_date = (
+                local.session_date
+                if local is not None
+                else (decision.session_date if decision is not None else default_session_date)
+            )
 
             if local is None:
                 created_orders += 1
@@ -201,8 +219,8 @@ class PollingOrderReconciler:
             self.ledger.upsert_order(
                 OrderRecord(
                     order_id=snapshot.order_id,
-                    run_id=local.run_id if local is not None else None,
-                    session_date=local.session_date if local is not None else None,
+                    run_id=resolved_run_id,
+                    session_date=resolved_session_date,
                     client_order_id=snapshot.client_order_id,
                     symbol=snapshot.symbol,
                     side=snapshot.side,
@@ -248,7 +266,7 @@ class PollingOrderReconciler:
                         FillRecord(
                             fill_id=f"{snapshot.order_id}:{snapshot.filled_quantity}:{snapshot.updated_at_utc.isoformat()}",
                             order_id=snapshot.order_id,
-                            run_id=local.run_id if local is not None else None,
+                            run_id=resolved_run_id,
                             symbol=snapshot.symbol,
                             side=snapshot.side,
                             quantity=fill_delta,
@@ -268,7 +286,7 @@ class PollingOrderReconciler:
                     FillRecord(
                         fill_id=fill.fill_id,
                         order_id=fill.order_id,
-                        run_id=local.run_id if local is not None else None,
+                        run_id=local.run_id if local is not None else default_run_id,
                         symbol=fill.symbol,
                         side=fill.side,
                         quantity=fill.quantity,

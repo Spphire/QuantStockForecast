@@ -18,6 +18,7 @@ from execution.common.state_store import write_latest_state, write_order_journal
 from execution.common.strategy_runtime import (
     available_rebalance_dates,
     default_ledger_path,
+    latest_dir,
     load_local_positions,
     load_strategy_config,
     load_target_positions,
@@ -258,7 +259,7 @@ def run_strategy(
         )
 
         saved_plan_paths = save_plan(run_dir, plan)
-        latest_runtime_path = sync_latest_run(strategy_id, run_dir)
+        latest_runtime_path = latest_dir(strategy_id)
         manifest = build_paper_run_manifest(
             run_id=run_id,
             session_date=effective_session_date,
@@ -407,8 +408,13 @@ def run_strategy(
                 json.dumps(order_statuses, ensure_ascii=False, indent=2),
                 encoding="utf-8",
             )
-            if order_statuses:
-                PollingOrderReconciler(ledger).reconcile_orders(order_statuses)
+            reconciliation_payloads = list(order_statuses) or _submitted_order_snapshots(submitted_orders)
+            if reconciliation_payloads:
+                PollingOrderReconciler(ledger).reconcile_orders(
+                    reconciliation_payloads,
+                    default_run_id=run_id,
+                    default_session_date=effective_session_date,
+                )
             snapshot_paths.update(save_account_snapshot(broker, run_dir, prefix="post"))
 
         summary = {
@@ -442,7 +448,6 @@ def run_strategy(
             "validation": validation_summary,
             **snapshot_paths,
         }
-        (run_dir / "run_summary.json").write_text(json.dumps(summary, ensure_ascii=False, indent=2), encoding="utf-8")
 
         order_rows = _build_order_rows(
             strategy_id=strategy_id,
@@ -457,6 +462,8 @@ def run_strategy(
         order_journal_path = write_order_journal(strategy_id, order_rows)
         summary["latest_state_path"] = state_summary["latest_state_path"]
         summary["order_journal_path"] = order_journal_path
+        (run_dir / "run_summary.json").write_text(json.dumps(summary, ensure_ascii=False, indent=2), encoding="utf-8")
+        latest_runtime_path = sync_latest_run(strategy_id, run_dir)
 
         if submit and validation_summary["blocked_count"] > 0:
             failures.append(
@@ -663,6 +670,34 @@ def _build_order_rows(
         row["run_dir"] = str(run_dir)
         order_rows.append(row)
     return order_rows
+
+
+def _submitted_order_snapshots(submitted_orders: Sequence[Mapping[str, Any]]) -> list[dict[str, Any]]:
+    snapshots: list[dict[str, Any]] = []
+    for item in submitted_orders:
+        raw_payload = item.get("raw")
+        if isinstance(raw_payload, Mapping) and raw_payload:
+            payload = dict(raw_payload)
+            payload.setdefault("id", item.get("order_id"))
+            payload.setdefault("client_order_id", item.get("client_order_id"))
+            payload.setdefault("symbol", item.get("symbol"))
+            payload.setdefault("side", item.get("side"))
+            payload.setdefault("status", item.get("status"))
+            snapshots.append(payload)
+            continue
+        order_id = str(item.get("order_id", "")).strip()
+        if not order_id:
+            continue
+        snapshots.append(
+            {
+                "id": order_id,
+                "client_order_id": item.get("client_order_id"),
+                "symbol": item.get("symbol"),
+                "side": item.get("side"),
+                "status": item.get("status", "accepted"),
+            }
+        )
+    return snapshots
 
 
 def _planned_client_order_id(
