@@ -69,12 +69,10 @@ Windows 任务计划程序直接调用这三份脚本：
 powershell -ExecutionPolicy Bypass -File .\execution\scripts\windows\register_scheduler_tasks.ps1
 ```
 
-它会注册 4 个任务：
+它会注册 2 个任务：
 
-- `QuantStockForecast-NightlyResearch-0530`
-- `QuantStockForecast-NightlyResearch-0630`
-- `QuantStockForecast-MarketOpenSubmit-2135`
-- `QuantStockForecast-MarketOpenSubmit-2235`
+- `QuantStockForecast Nightly Research`
+- `QuantStockForecast Market Open Submit`
 
 ## Brief Outputs
 
