@@ -24,6 +24,8 @@
   看与 StockMachine 对齐的 strict backtest setting 和复现命令
 - [test_report_2026-03-22_strict_peer_comparison.md](C:/Users/Apricity/Desktop/QuantStockForecast/docs/project/test_report_2026-03-22_strict_peer_comparison.md)
   看 strict peer-comparison 改动对应的测试报告
+- [strict_strategy_run_2026-03-22.md](C:/Users/Apricity/Desktop/QuantStockForecast/docs/project/strict_strategy_run_2026-03-22.md)
+  看按 strict setting 实跑后的收益统计
 
 ## Related Module Guides
 
