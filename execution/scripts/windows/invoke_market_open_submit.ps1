@@ -1,11 +1,11 @@
-. "$PSScriptRoot\_common.ps1"
-
 param(
     [string[]]$StrategyConfigs = @(),
     [switch]$AllowUnhealthy,
     [switch]$SkipSessionGuard,
     [switch]$IgnoreTimeWindow
 )
+
+. "$PSScriptRoot\_common.ps1"
 
 $repoRoot = Get-RepoRoot
 $nyNow = Get-NewYorkNow
@@ -21,6 +21,18 @@ if ($StrategyConfigs.Count -eq 0) {
 }
 
 $python = Get-RepoPython -RepoRoot $repoRoot
+$briefStatus = "success"
+$briefNotes = New-Object System.Collections.Generic.List[string]
+if ($AllowUnhealthy) {
+    $briefNotes.Add("AllowUnhealthy enabled.")
+}
+if ($SkipSessionGuard) {
+    $briefNotes.Add("SkipSessionGuard enabled.")
+}
+$fatalError = $null
+$skippedStrategies = New-Object System.Collections.Generic.List[string]
+
+try {
 
 foreach ($strategyConfig in $StrategyConfigs) {
     $resolvedConfig = Resolve-Path $strategyConfig
@@ -58,6 +70,7 @@ print(json.dumps({
     $clock = $clockJson | ConvertFrom-Json
     if (-not [bool]$clock.is_open) {
         Write-Host ("[skip] Broker clock closed for " + $resolvedConfig)
+        $skippedStrategies.Add([string]$resolvedConfig)
         continue
     }
 
@@ -87,6 +100,40 @@ print(json.dumps({
         $resolvedConfig,
         "latest-run"
     )
+}
+}
+catch {
+    $briefStatus = "failed"
+    $briefNotes.Add($_.Exception.Message)
+    $fatalError = $_
+}
+finally {
+    if ($skippedStrategies.Count -gt 0 -and $briefStatus -eq "success") {
+        $briefStatus = "partial"
+        $briefNotes.Add("Broker closed for: " + ($skippedStrategies.ToArray() -join ", "))
+    }
+    try {
+        $briefPayload = Invoke-OperationBrief `
+            -RepoRoot $repoRoot `
+            -Phase "submit" `
+            -StrategyConfigs $StrategyConfigs `
+            -Title ("Market Open Submit Brief - " + $nyNow.ToString("yyyy-MM-dd")) `
+            -Status $briefStatus `
+            -Notes $briefNotes.ToArray()
+        if ($null -ne $briefPayload) {
+            Publish-OperationBriefNotification -BriefPayload $briefPayload
+        }
+    }
+    catch {
+        if ($null -eq $fatalError) {
+            throw
+        }
+        Write-Warning ("Brief generation failed after submit error: " + $_.Exception.Message)
+    }
+}
+
+if ($null -ne $fatalError) {
+    throw $fatalError
 }
 
 Write-Host "[done] Market-open submit wrapper finished."

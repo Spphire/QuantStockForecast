@@ -156,10 +156,15 @@ python execution/scripts/show_strategy_state.py us_full_multi_expert_daily
 
 - `python -m execution.managed.apps.run_multi_expert_paper execution/strategies/us_zeroshot_a_share_multi_expert_daily.json`
 - `python -m execution.managed.apps.paper_daily execution/strategies/us_zeroshot_a_share_multi_expert_daily.json run`
+- `python -m execution.managed.apps.paper_brief --phase submit execution/strategies/us_zeroshot_a_share_multi_expert_daily.json`
 - `python -m execution.managed.apps.paper_smoke execution/strategies/us_zeroshot_a_share_multi_expert_daily.json`
 - `python -m execution.managed.apps.paper_ops execution/strategies/us_zeroshot_a_share_multi_expert_daily.json latest-run`
 
 兼容层脚本 `execution/scripts/*.py` 仍然保留，但它们现在只是 thin wrapper，方便已有调度器沿用旧调用方式。
+
+如果你准备直接交给 Windows Task Scheduler 托管，建议一起看：
+
+- [windows_scheduler_guide.md](C:/Users/Apricity/Desktop/QuantStockForecast/docs/project/windows_scheduler_guide.md)
 
 这套 runtime 会额外维护：
 

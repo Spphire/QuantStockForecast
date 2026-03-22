@@ -43,6 +43,7 @@
   / [run_managed_paper_strategy.py](C:/Users/Apricity/Desktop/QuantStockForecast/execution/scripts/run_managed_paper_strategy.py)
   / [paper_daily.py](C:/Users/Apricity/Desktop/QuantStockForecast/execution/scripts/paper_daily.py)
   / [paper_ops.py](C:/Users/Apricity/Desktop/QuantStockForecast/execution/scripts/paper_ops.py)
+  / [windows_scheduler_guide.md](C:/Users/Apricity/Desktop/QuantStockForecast/docs/project/windows_scheduler_guide.md)
 
 ## 4. 看实验结论
 

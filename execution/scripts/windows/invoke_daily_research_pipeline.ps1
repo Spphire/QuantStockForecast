@@ -1,10 +1,11 @@
-. "$PSScriptRoot\_common.ps1"
-
 param(
     [string]$DataEndDate = "",
+    [string[]]$StrategyConfigs = @(),
     [switch]$RefreshMetadata,
     [switch]$IgnoreTimeWindow
 )
+
+. "$PSScriptRoot\_common.ps1"
 
 $repoRoot = Get-RepoRoot
 $nyNow = Get-NewYorkNow
@@ -19,6 +20,20 @@ if ([string]::IsNullOrWhiteSpace($DataEndDate)) {
     $DataEndDate = $nyNow.ToString("yyyy-MM-dd")
 }
 $dataEndDateCompact = $DataEndDate.Replace("-", "")
+
+if ($StrategyConfigs.Count -eq 0) {
+    $StrategyConfigs = Get-DefaultStrategyConfigs -RepoRoot $repoRoot
+}
+
+$briefStatus = "success"
+$briefNotes = New-Object System.Collections.Generic.List[string]
+$briefNotes.Add("Data end date: $DataEndDate")
+if ($RefreshMetadata) {
+    $briefNotes.Add("Metadata refresh enabled.")
+}
+$fatalError = $null
+
+try {
 
 $universeSymbols = "configs/stock_universe_us_large_cap_30.txt"
 $metadataCsv = "data/interim/stooq/universes/us_large_cap_30_metadata.csv"
@@ -249,5 +264,35 @@ Invoke-RepoPython -RepoRoot $repoRoot -Arguments @(
     "--transaction-cost-bps", "10",
     "--output-dir", "risk_management/white_box/runtime/us_full_multi_expert_daily"
 )
+}
+catch {
+    $briefStatus = "failed"
+    $briefNotes.Add($_.Exception.Message)
+    $fatalError = $_
+}
+finally {
+    try {
+        $briefPayload = Invoke-OperationBrief `
+            -RepoRoot $repoRoot `
+            -Phase "research" `
+            -StrategyConfigs $StrategyConfigs `
+            -Title ("Nightly Research Brief - " + $DataEndDate) `
+            -Status $briefStatus `
+            -Notes $briefNotes.ToArray()
+        if ($null -ne $briefPayload) {
+            Publish-OperationBriefNotification -BriefPayload $briefPayload
+        }
+    }
+    catch {
+        if ($null -eq $fatalError) {
+            throw
+        }
+        Write-Warning ("Brief generation failed after research error: " + $_.Exception.Message)
+    }
+}
+
+if ($null -ne $fatalError) {
+    throw $fatalError
+}
 
 Write-Host ("[done] Daily research pipeline finished for end date " + $DataEndDate)

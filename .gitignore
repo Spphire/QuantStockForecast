@@ -6,6 +6,7 @@ __pycache__/
 
 # Local secrets and machine-specific config
 configs/alpaca_accounts.local.json
+configs/ops_notifications.local.json
 .env
 .env.*
 !execution/alpaca/.env.example
