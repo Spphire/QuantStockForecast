@@ -25,9 +25,21 @@ if ($StrategyConfigs.Count -eq 0) {
     $StrategyConfigs = Get-DefaultStrategyConfigs -RepoRoot $repoRoot
 }
 
+$alpacaDataEnvPrefix = "ALPACA_ZERO_SHOT"
+try {
+    $firstConfig = Get-Content (Resolve-Path $StrategyConfigs[0]) -Raw | ConvertFrom-Json
+    if (-not [string]::IsNullOrWhiteSpace([string]$firstConfig.paper_env_prefix)) {
+        $alpacaDataEnvPrefix = [string]$firstConfig.paper_env_prefix
+    }
+}
+catch {
+    Write-Warning ("Unable to infer Alpaca data prefix from strategy config, fallback to " + $alpacaDataEnvPrefix)
+}
+
 $briefStatus = "success"
 $briefNotes = New-Object System.Collections.Generic.List[string]
 $briefNotes.Add("Data end date: $DataEndDate")
+$briefNotes.Add("Market data provider: Alpaca ($alpacaDataEnvPrefix)")
 if ($RefreshMetadata) {
     $briefNotes.Add("Metadata refresh enabled.")
 }
@@ -36,15 +48,18 @@ $fatalError = $null
 try {
 
 $universeSymbols = "configs/stock_universe_us_large_cap_30.txt"
-$metadataCsv = "data/interim/stooq/universes/us_large_cap_30_metadata.csv"
+$metadataCsv = "data/interim/alpaca/universes/us_large_cap_30_metadata.csv"
+$researchTitle = ([string]([char]0x591C) + [string]([char]0x95F4) + [string]([char]0x7814) + [string]([char]0x7A76) + [string]([char]0x7B80) + [string]([char]0x62A5) + " - " + $DataEndDate)
 
 Invoke-RepoPython -RepoRoot $repoRoot -Arguments @(
     "data_module/fetchers/scripts/fetch_stock_universe.py",
-    "--provider", "stooq",
+    "--provider", "alpaca",
     "--symbols-file", $universeSymbols,
     "--name", "us_large_cap_30",
     "--start", "2020-01-01",
     "--end", $DataEndDate,
+    "--alpaca-env-prefix", $alpacaDataEnvPrefix,
+    "--alpaca-feed", "iex",
     "--continue-on-error"
 )
 
@@ -57,7 +72,7 @@ if ($RefreshMetadata -or -not (Test-Path (Join-Path $repoRoot $metadataCsv))) {
     )
 }
 
-$latestUniverseCsv = Get-ChildItem (Join-Path $repoRoot "data/interim/stooq/universes/us_large_cap_30_20200101_*_hfq_normalized.csv") |
+$latestUniverseCsv = Get-ChildItem (Join-Path $repoRoot "data/interim/alpaca/universes/us_large_cap_30_20200101_*_hfq_normalized.csv") |
     Sort-Object Name |
     Select-Object -Last 1
 
@@ -66,32 +81,32 @@ if ($null -eq $latestUniverseCsv) {
 }
 
 $aShareModelPaths = @{
-    lightgbm    = "model_prediction/lightgbm/artifacts/large_cap_50_20200101_20241231_hfq_normalized_regression_5d/model.txt"
-    xgboost     = "model_prediction/xgboost/artifacts/large_cap_50_20200101_20241231_hfq_normalized_regression_5d/model.json"
-    catboost    = "execution/experiments/us_a_share_expert_suite/catboost_regression_balanced/train/model.cbm"
-    lstm        = "execution/experiments/us_a_share_expert_suite/lstm_regression_balanced/train/model.pt"
-    transformer = "execution/experiments/us_a_share_expert_suite/transformer_regression_balanced/train/model.pt"
+    lightgbm    = "model_prediction/lightgbm/artifacts/validation_20260322/zero_shot_a_share_train/model.txt"
+    xgboost     = "model_prediction/xgboost/artifacts/validation_20260322/zero_shot_a_share_train/model.json"
+    catboost    = "model_prediction/catboost/artifacts/validation_20260322/zero_shot_a_share_train/model.cbm"
+    lstm        = "model_prediction/lstm/artifacts/validation_20260322/zero_shot_a_share_train/model.pt"
+    transformer = "model_prediction/transformer/artifacts/validation_20260322/zero_shot_a_share_train/model.pt"
 }
 $aShareMetricsPaths = @{
-    lightgbm    = "model_prediction/lightgbm/artifacts/large_cap_50_20200101_20241231_hfq_normalized_regression_5d/metrics.json"
-    xgboost     = "model_prediction/xgboost/artifacts/large_cap_50_20200101_20241231_hfq_normalized_regression_5d/metrics.json"
-    catboost    = "execution/experiments/us_a_share_expert_suite/catboost_regression_balanced/train/metrics.json"
-    lstm        = "execution/experiments/us_a_share_expert_suite/lstm_regression_balanced/train/metrics.json"
-    transformer = "execution/experiments/us_a_share_expert_suite/transformer_regression_balanced/train/metrics.json"
+    lightgbm    = "model_prediction/lightgbm/artifacts/validation_20260322/zero_shot_a_share_train/metrics.json"
+    xgboost     = "model_prediction/xgboost/artifacts/validation_20260322/zero_shot_a_share_train/metrics.json"
+    catboost    = "model_prediction/catboost/artifacts/validation_20260322/zero_shot_a_share_train/metrics.json"
+    lstm        = "model_prediction/lstm/artifacts/validation_20260322/zero_shot_a_share_train/metrics.json"
+    transformer = "model_prediction/transformer/artifacts/validation_20260322/zero_shot_a_share_train/metrics.json"
 }
 $usFullModelPaths = @{
-    lightgbm    = "model_prediction/lightgbm/artifacts/us_large_cap_30_full_regression_5d/model.txt"
-    xgboost     = "model_prediction/xgboost/artifacts/us_large_cap_30_full_regression_5d/model.json"
-    catboost    = "model_prediction/catboost/artifacts/us_large_cap_30_full_regression_5d/model.cbm"
-    lstm        = "model_prediction/lstm/artifacts/us_large_cap_30_full_regression_5d/model.pt"
-    transformer = "model_prediction/transformer/artifacts/us_large_cap_30_full_regression_5d_lb20/model.pt"
+    lightgbm    = "model_prediction/lightgbm/artifacts/validation_20260322/us_full_train/model.txt"
+    xgboost     = "model_prediction/xgboost/artifacts/validation_20260322/us_full_train/model.json"
+    catboost    = "model_prediction/catboost/artifacts/validation_20260322/us_full_train/model.cbm"
+    lstm        = "model_prediction/lstm/artifacts/validation_20260322/us_full_train/model.pt"
+    transformer = "model_prediction/transformer/artifacts/validation_20260322/us_full_train/model.pt"
 }
 $usFullMetricsPaths = @{
-    lightgbm    = "model_prediction/lightgbm/artifacts/us_large_cap_30_full_regression_5d/metrics.json"
-    xgboost     = "model_prediction/xgboost/artifacts/us_large_cap_30_full_regression_5d/metrics.json"
-    catboost    = "model_prediction/catboost/artifacts/us_large_cap_30_full_regression_5d/metrics.json"
-    lstm        = "model_prediction/lstm/artifacts/us_large_cap_30_full_regression_5d/metrics.json"
-    transformer = "model_prediction/transformer/artifacts/us_large_cap_30_full_regression_5d_lb20/metrics.json"
+    lightgbm    = "model_prediction/lightgbm/artifacts/validation_20260322/us_full_train/metrics.json"
+    xgboost     = "model_prediction/xgboost/artifacts/validation_20260322/us_full_train/metrics.json"
+    catboost    = "model_prediction/catboost/artifacts/validation_20260322/us_full_train/metrics.json"
+    lstm        = "model_prediction/lstm/artifacts/validation_20260322/us_full_train/metrics.json"
+    transformer = "model_prediction/transformer/artifacts/validation_20260322/us_full_train/metrics.json"
 }
 
 foreach ($pathValue in @(
@@ -242,6 +257,9 @@ Invoke-RepoPython -RepoRoot $repoRoot -Arguments @(
     "--secondary-max-per-group", "2",
     "--weighting", "score_confidence",
     "--max-position-weight", "0.35",
+    "--max-gross-exposure", "0.85",
+    "--confidence-target", "0.90",
+    "--min-gross-exposure", "0.55",
     "--transaction-cost-bps", "10",
     "--output-dir", "risk_management/white_box/runtime/us_zeroshot_a_share_multi_expert_daily"
 )
@@ -261,6 +279,9 @@ Invoke-RepoPython -RepoRoot $repoRoot -Arguments @(
     "--secondary-max-per-group", "2",
     "--weighting", "score_confidence",
     "--max-position-weight", "0.35",
+    "--max-gross-exposure", "0.90",
+    "--confidence-target", "0.85",
+    "--min-gross-exposure", "0.60",
     "--transaction-cost-bps", "10",
     "--output-dir", "risk_management/white_box/runtime/us_full_multi_expert_daily"
 )
@@ -276,7 +297,7 @@ finally {
             -RepoRoot $repoRoot `
             -Phase "research" `
             -StrategyConfigs $StrategyConfigs `
-            -Title ("Nightly Research Brief - " + $DataEndDate) `
+            -Title $researchTitle `
             -Status $briefStatus `
             -Notes $briefNotes.ToArray() `
             -Notify

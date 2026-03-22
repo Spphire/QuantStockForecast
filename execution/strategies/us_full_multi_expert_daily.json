@@ -9,6 +9,10 @@
     "path": "risk_management/white_box/runtime/us_full_multi_expert_daily/risk_positions.csv",
     "summary_path": "risk_management/white_box/runtime/us_full_multi_expert_daily/risk_summary.json"
   },
+  "research": {
+    "watchlist_file": "configs/stock_universe_us_large_cap_30.txt",
+    "watchlist_limit": 10
+  },
   "execution": {
     "rebalance_selection": "latest",
     "default_account_equity": 100000.0,

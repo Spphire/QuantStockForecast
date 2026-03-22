@@ -19,6 +19,7 @@ if str(PROJECT_ROOT) not in sys.path:
     sys.path.append(str(PROJECT_ROOT))
 
 from data_module.common.stock_schema import default_data_dir, normalize_dataframe
+from execution.alpaca.client import load_alpaca_credentials
 
 
 def parse_args() -> argparse.Namespace:
@@ -28,7 +29,7 @@ def parse_args() -> argparse.Namespace:
     parser.add_argument(
         "--provider",
         default="demo",
-        choices=["demo", "akshare", "stooq"],
+        choices=["demo", "akshare", "stooq", "alpaca"],
         help="Data source provider. Use demo for a dependency-free smoke test.",
     )
     parser.add_argument("--symbol", required=True, help="Stock symbol or code, such as 000001.")
@@ -63,6 +64,17 @@ def parse_args() -> argparse.Namespace:
         type=int,
         default=42,
         help="Random seed used only by the demo provider.",
+    )
+    parser.add_argument(
+        "--alpaca-env-prefix",
+        default="ALPACA_ZERO_SHOT",
+        help="Credential prefix used for Alpaca market data (provider=alpaca).",
+    )
+    parser.add_argument(
+        "--alpaca-feed",
+        default="iex",
+        choices=["iex", "sip"],
+        help="Market data feed used for Alpaca provider.",
     )
     return parser.parse_args()
 
@@ -212,6 +224,74 @@ def fetch_stooq_history(symbol: str, start: str, end: str) -> tuple[pd.DataFrame
     return working, "stooq-us"
 
 
+def fetch_alpaca_history(
+    symbol: str,
+    start: str,
+    end: str,
+    *,
+    env_prefix: str,
+    feed: str,
+) -> tuple[pd.DataFrame, str]:
+    creds = load_alpaca_credentials(env_prefix)
+    session = requests.Session()
+    session.headers.update(
+        {
+            "APCA-API-KEY-ID": creds.api_key,
+            "APCA-API-SECRET-KEY": creds.secret_key,
+        }
+    )
+    base_url = "https://data.alpaca.markets"
+    symbol_upper = str(symbol).strip().upper()
+    start_iso = f"{normalize_date(start)}T00:00:00Z"
+    end_iso = f"{normalize_date(end)}T23:59:59Z"
+
+    bars: list[dict[str, object]] = []
+    page_token = ""
+    while True:
+        params = {
+            "symbols": symbol_upper,
+            "timeframe": "1Day",
+            "start": start_iso,
+            "end": end_iso,
+            "limit": 10000,
+            "adjustment": "raw",
+            "feed": feed,
+            "sort": "asc",
+        }
+        if page_token:
+            params["page_token"] = page_token
+        response = session.get(f"{base_url}/v2/stocks/bars", params=params, timeout=30)
+        response.raise_for_status()
+        payload = response.json() if response.content else {}
+        symbol_bars = ((payload.get("bars") or {}) if isinstance(payload, dict) else {}).get(symbol_upper) or []
+        if isinstance(symbol_bars, list):
+            bars.extend(symbol_bars)
+        page_token = str((payload.get("next_page_token") if isinstance(payload, dict) else "") or "")
+        if not page_token:
+            break
+
+    if not bars:
+        raise ValueError(f"No Alpaca bars returned for {symbol_upper}.")
+
+    frame = pd.DataFrame(bars).copy()
+    if frame.empty:
+        raise ValueError(f"Empty Alpaca history returned for {symbol_upper}.")
+    frame["date"] = pd.to_datetime(frame.get("t"), utc=True, errors="coerce").dt.tz_convert(None).dt.strftime("%Y-%m-%d")
+    frame["open"] = pd.to_numeric(frame.get("o"), errors="coerce")
+    frame["high"] = pd.to_numeric(frame.get("h"), errors="coerce")
+    frame["low"] = pd.to_numeric(frame.get("l"), errors="coerce")
+    frame["close"] = pd.to_numeric(frame.get("c"), errors="coerce")
+    frame["volume"] = pd.to_numeric(frame.get("v"), errors="coerce")
+    vw = pd.to_numeric(frame.get("vw"), errors="coerce")
+    frame["amount"] = vw.fillna(frame["close"]).fillna(0.0) * frame["volume"].fillna(0.0)
+    frame["symbol"] = symbol_upper
+    frame = frame.dropna(subset=["date", "open", "high", "low", "close"]).copy()
+    frame = frame.sort_values("date", kind="stable").reset_index(drop=True)
+    if frame.empty:
+        raise ValueError(f"No valid Alpaca rows remain for {symbol_upper} after cleaning.")
+    return frame, f"alpaca-{feed}"
+
+
 def build_manifest(
     provider: str,
     symbol: str,
@@ -260,6 +340,14 @@ def main() -> int:
             provider_label = "demo"
         elif args.provider == "stooq":
             raw_df, provider_label = fetch_stooq_history(args.symbol, args.start, args.end)
+        elif args.provider == "alpaca":
+            raw_df, provider_label = fetch_alpaca_history(
+                args.symbol,
+                args.start,
+                args.end,
+                env_prefix=args.alpaca_env_prefix,
+                feed=args.alpaca_feed,
+            )
         else:
             raw_df, provider_label = fetch_akshare_history(
                 args.symbol, args.start, args.end, args.adjust

@@ -150,3 +150,28 @@ def test_run_white_box_risk_strict_filters_apply_median_volume_and_vol_cap(tmp_p
 
     positions = pd.read_csv(result["positions_path"], encoding="utf-8")
     assert set(positions["symbol"]) == {"AAA", "DDD"}
+
+
+def test_run_white_box_risk_caps_total_invested_exposure(tmp_path: Path) -> None:
+    predictions_csv = _write_predictions_csv(
+        tmp_path,
+        [
+            {"date": "2026-01-02", "symbol": "AAA", "pred_score": 0.90, "target_return_5d": 0.030},
+            {"date": "2026-01-02", "symbol": "BBB", "pred_score": 0.80, "target_return_5d": 0.020},
+            {"date": "2026-01-02", "symbol": "CCC", "pred_score": 0.70, "target_return_5d": 0.010},
+        ],
+        "gross_exposure_cap.csv",
+    )
+
+    result = run_white_box_risk(
+        predictions_csv,
+        output_dir=tmp_path / "gross_exposure_cap",
+        top_k=3,
+        rebalance_step=5,
+        max_position_weight=0.7,
+        max_gross_exposure=0.6,
+    )
+
+    positions = pd.read_csv(result["positions_path"], encoding="utf-8")
+    total_weight = float(positions["weight"].sum())
+    assert abs(total_weight - 0.6) < 1e-9

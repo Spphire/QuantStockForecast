@@ -13,6 +13,7 @@ from risk_management.white_box.liquidity_rules import apply_liquidity_filters
 from risk_management.white_box.position_sizing import (
     apply_min_trade_weight,
     blend_toward_target,
+    cap_gross_exposure,
     compute_position_weights,
     normalize_weight_dict,
     portfolio_turnover,
@@ -150,10 +151,35 @@ def build_weighted_portfolio(
 
     portfolio["weight"] = portfolio["symbol"].astype(str).map(normalized_weights).fillna(0.0)
     portfolio = portfolio[portfolio["weight"] > 1e-12].copy()
+    # Keep explicit cash when total invested weight is below 1.0.
+    # Only scale down if weights accidentally exceed 100%.
     total = float(portfolio["weight"].sum())
-    if total > 1e-12:
+    if total > 1.0 + 1e-12:
         portfolio["weight"] = portfolio["weight"] / total
     return portfolio
+
+
+def _resolve_target_gross_exposure(
+    selected: pd.DataFrame,
+    *,
+    max_gross_exposure: float,
+    confidence_target: float,
+    min_gross_exposure: float,
+) -> tuple[float, float]:
+    gross_cap = min(max(float(max_gross_exposure), 0.0), 1.0)
+    if selected.empty or gross_cap <= 1e-12:
+        return 0.0, 0.0
+
+    confidence_series = pd.to_numeric(selected["confidence"], errors="coerce").fillna(0.0)
+    mean_confidence = float(confidence_series.mean()) if not confidence_series.empty else 0.0
+    if confidence_target <= 0:
+        return gross_cap, mean_confidence
+
+    minimum_gross = min(max(float(min_gross_exposure), 0.0), gross_cap)
+    floor_scale = minimum_gross / gross_cap if gross_cap > 1e-12 else 0.0
+    confidence_scale = mean_confidence / max(float(confidence_target), 1e-12)
+    adaptive_scale = min(max(confidence_scale, floor_scale), 1.0)
+    return gross_cap * adaptive_scale, mean_confidence
 
 
 def _apply_sector_neutralized_scores(
@@ -215,6 +241,9 @@ def run_white_box_risk(
     sector_column: str = "",
     weighting: str = "equal",
     max_position_weight: float = 1.0,
+    max_gross_exposure: float = 1.0,
+    confidence_target: float = 0.0,
+    min_gross_exposure: float = 0.0,
     transaction_cost_bps: float = 10.0,
     hold_buffer: float = 0.0,
     max_turnover: float = 0.0,
@@ -291,10 +320,20 @@ def run_white_box_risk(
             confidence_column="confidence",
             max_position_weight=max_position_weight,
         )
+        target_gross_exposure, mean_selected_confidence = _resolve_target_gross_exposure(
+            sized,
+            max_gross_exposure=max_gross_exposure,
+            confidence_target=confidence_target,
+            min_gross_exposure=min_gross_exposure,
+        )
         target_weights = {
             row["symbol"]: float(row["weight"])
             for _, row in sized[["symbol", "weight"]].iterrows()
         }
+        target_weights = cap_gross_exposure(
+            target_weights,
+            max_gross_exposure=target_gross_exposure,
+        )
         desired_turnover = portfolio_turnover(previous_weights, target_weights)
         current_weights = blend_toward_target(
             previous_weights,
@@ -306,12 +345,18 @@ def run_white_box_risk(
             current_weights,
             min_trade_weight=min_trade_weight,
         )
+        current_weights = cap_gross_exposure(
+            current_weights,
+            max_gross_exposure=target_gross_exposure,
+        )
         sized = build_weighted_portfolio(date_slice, current_weights)
         if sized.empty:
             continue
 
         turnover = portfolio_turnover(previous_weights, current_weights)
         cost = turnover * cost_rate
+        invested_weight = float(sum(current_weights.values()))
+        cash_weight = max(0.0, 1.0 - invested_weight)
 
         has_realized_return = bool(sized["realized_return"].notna().any())
         if has_realized_return:
@@ -346,11 +391,15 @@ def run_white_box_risk(
                 "selected_count": int(len(sized)),
                 "mean_score": float(sized["score"].mean()),
                 "mean_confidence": float(sized["confidence"].mean()),
+                "mean_selected_confidence": mean_selected_confidence,
                 "gross_period_return": gross_return,
                 "transaction_cost": cost,
                 "desired_turnover": desired_turnover,
                 "turnover": turnover,
                 "turnover_reduction": max(desired_turnover - turnover, 0.0),
+                "target_gross_exposure": target_gross_exposure,
+                "invested_weight": invested_weight,
+                "cash_weight": cash_weight,
                 "period_return": net_return,
                 "benchmark_return": benchmark_return,
                 "excess_return": net_return - benchmark_return,
@@ -398,6 +447,9 @@ def run_white_box_risk(
         "max_vol_20": max_vol_20,
         "weighting": weighting,
         "max_position_weight": max_position_weight,
+        "max_gross_exposure": max_gross_exposure,
+        "confidence_target": confidence_target,
+        "min_gross_exposure": min_gross_exposure,
         "transaction_cost_bps": transaction_cost_bps,
         "hold_buffer": hold_buffer,
         "max_turnover": max_turnover,
@@ -415,6 +467,12 @@ def run_white_box_risk(
         "excess_total_return": total_return - benchmark_total_return,
         "mean_period_return": float(periods_df["period_return"].mean()),
         "mean_gross_period_return": float(periods_df["gross_period_return"].mean()),
+        "mean_selected_confidence": float(periods_df["mean_selected_confidence"].mean()),
+        "mean_target_gross_exposure": float(periods_df["target_gross_exposure"].mean()),
+        "mean_invested_weight": float(periods_df["invested_weight"].mean()),
+        "mean_cash_weight": float(periods_df["cash_weight"].mean()),
+        "max_invested_weight": float(periods_df["invested_weight"].max()),
+        "min_invested_weight": float(periods_df["invested_weight"].min()),
         "mean_benchmark_return": float(periods_df["benchmark_return"].mean()),
         "mean_desired_turnover": float(periods_df["desired_turnover"].mean()),
         "mean_turnover": float(periods_df["turnover"].mean()),

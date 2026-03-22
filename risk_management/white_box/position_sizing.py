@@ -18,7 +18,7 @@ def _apply_max_weight(weights: pd.Series, max_position_weight: float) -> pd.Seri
     if max_position_weight <= 0 or max_position_weight >= 1:
         return weights / weights.sum()
 
-    adjusted = weights.copy().astype(float)
+    adjusted = (weights.copy().astype(float) / max(weights.sum(), 1e-12)).clip(lower=0.0)
     for _ in range(10):
         capped = adjusted.clip(upper=max_position_weight)
         residual = 1.0 - capped.sum()
@@ -27,16 +27,21 @@ def _apply_max_weight(weights: pd.Series, max_position_weight: float) -> pd.Seri
             break
         uncapped_mask = capped < max_position_weight - 1e-12
         if not uncapped_mask.any():
-            adjusted = capped / capped.sum()
+            # Infeasible case: too few names to satisfy the cap while fully invested.
+            # Keep capped weights as-is (sum < 1.0) so remaining capital stays in cash.
+            adjusted = capped
             break
         redistribute = adjusted[uncapped_mask]
         if redistribute.sum() <= 0:
-            adjusted = capped / capped.sum()
+            adjusted = capped
             break
         capped.loc[uncapped_mask] += residual * redistribute / redistribute.sum()
         adjusted = capped
 
-    return adjusted / adjusted.sum()
+    total = float(adjusted.sum())
+    if total <= 1e-12:
+        return weights / max(weights.sum(), 1e-12)
+    return adjusted
 
 
 def normalize_weight_dict(weights: dict[str, float], *, eps: float = 1e-12) -> dict[str, float]:
@@ -48,7 +53,36 @@ def normalize_weight_dict(weights: dict[str, float], *, eps: float = 1e-12) -> d
     total = sum(positive.values())
     if total <= eps:
         return {}
-    return {symbol: weight / total for symbol, weight in positive.items()}
+    # Keep explicit cash when weights sum to less than 1.0; only scale down if overweight.
+    if total > 1.0 + eps:
+        return {symbol: weight / total for symbol, weight in positive.items()}
+    return positive
+
+
+def cap_gross_exposure(
+    weights: dict[str, float],
+    *,
+    max_gross_exposure: float = 1.0,
+    eps: float = 1e-12,
+) -> dict[str, float]:
+    normalized = normalize_weight_dict(weights, eps=eps)
+    if not normalized:
+        return {}
+
+    gross_cap = min(max(float(max_gross_exposure), 0.0), 1.0)
+    if gross_cap <= eps:
+        return {}
+
+    total = float(sum(normalized.values()))
+    if total <= gross_cap + eps:
+        return normalized
+
+    scale = gross_cap / total
+    return {
+        symbol: scaled
+        for symbol, weight in normalized.items()
+        if (scaled := float(weight) * scale) > eps
+    }
 
 
 def compute_position_weights(

@@ -41,6 +41,7 @@ def test_strict_white_box_kwargs_match_protocol_defaults() -> None:
     assert kwargs["benchmark_symbol"] == "SPY"
     assert kwargs["group_column"] == "industry_sector"
     assert kwargs["max_per_group"] == 2
+    assert kwargs["max_gross_exposure"] == 1.0
     assert kwargs["sector_neutralization"] is True
     assert kwargs["sector_column"] == "industry_sector"
     assert kwargs["min_close"] == 10.0

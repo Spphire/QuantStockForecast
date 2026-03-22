@@ -29,6 +29,7 @@ class PortfolioSetting:
     top_k: int = 10
     weighting: str = "equal"
     max_position_weight: float = 1.0
+    max_gross_exposure: float = 1.0
     max_positions_per_sector: int = 2
     sector_column: str = "industry_sector"
     sector_neutralization: bool = True
@@ -100,6 +101,7 @@ def strict_white_box_kwargs(
         "top_k": resolved.portfolio.top_k,
         "weighting": resolved.portfolio.weighting,
         "max_position_weight": resolved.portfolio.max_position_weight,
+        "max_gross_exposure": resolved.portfolio.max_gross_exposure,
         "group_column": resolved.portfolio.sector_column,
         "max_per_group": resolved.portfolio.max_positions_per_sector,
         "sector_column": resolved.portfolio.sector_column,

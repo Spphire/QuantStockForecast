@@ -30,7 +30,7 @@ function Invoke-RepoPython {
     Write-Host ("[python] " + ($Arguments -join " "))
     Push-Location $RepoRoot
     try {
-        & $python @Arguments
+        & $python -X utf8 @Arguments
         if ($LASTEXITCODE -ne 0) {
             throw "Python command failed with exit code $LASTEXITCODE"
         }
@@ -52,7 +52,7 @@ function Invoke-RepoPythonJson {
     Write-Host ("[python-json] " + ($Arguments -join " "))
     Push-Location $RepoRoot
     try {
-        $output = & $python @Arguments
+        $output = & $python -X utf8 @Arguments
         if ($LASTEXITCODE -ne 0) {
             throw "Python command failed with exit code $LASTEXITCODE"
         }

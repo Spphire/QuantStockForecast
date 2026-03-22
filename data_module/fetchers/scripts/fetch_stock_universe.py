@@ -20,6 +20,7 @@ from data_module.fetchers.scripts.fetch_stock_history import (
     build_manifest,
     default_output_paths,
     fetch_akshare_history,
+    fetch_alpaca_history,
     fetch_demo_history,
     fetch_stooq_history,
     normalize_date,
@@ -33,7 +34,7 @@ def parse_args() -> argparse.Namespace:
     parser.add_argument(
         "--provider",
         default="akshare",
-        choices=["demo", "akshare", "stooq"],
+        choices=["demo", "akshare", "stooq", "alpaca"],
         help="Data provider used for all requested symbols.",
     )
     parser.add_argument(
@@ -80,6 +81,17 @@ def parse_args() -> argparse.Namespace:
         action="store_true",
         help="Skip failed symbols and continue fetching the remaining universe.",
     )
+    parser.add_argument(
+        "--alpaca-env-prefix",
+        default="ALPACA_ZERO_SHOT",
+        help="Credential prefix used for Alpaca market data (provider=alpaca).",
+    )
+    parser.add_argument(
+        "--alpaca-feed",
+        default="iex",
+        choices=["iex", "sip"],
+        help="Market data feed used for Alpaca provider.",
+    )
     return parser.parse_args()
 
 
@@ -105,12 +117,27 @@ def load_symbols(symbols_arg: str, symbols_file: str) -> list[str]:
 
 
 def fetch_single_symbol(
-    provider: str, symbol: str, start: str, end: str, adjust: str, seed: int
+    provider: str,
+    symbol: str,
+    start: str,
+    end: str,
+    adjust: str,
+    seed: int,
+    alpaca_env_prefix: str,
+    alpaca_feed: str,
 ) -> tuple[pd.DataFrame, str]:
     if provider == "demo":
         return fetch_demo_history(symbol, start, end, seed), "demo"
     if provider == "stooq":
         return fetch_stooq_history(symbol, start, end)
+    if provider == "alpaca":
+        return fetch_alpaca_history(
+            symbol,
+            start,
+            end,
+            env_prefix=alpaca_env_prefix,
+            feed=alpaca_feed,
+        )
     return fetch_akshare_history(symbol, start, end, adjust)
 
 
@@ -156,7 +183,14 @@ def main() -> int:
 
         try:
             raw_df, provider_label = fetch_single_symbol(
-                args.provider, symbol, args.start, args.end, args.adjust, args.seed + index - 1
+                args.provider,
+                symbol,
+                args.start,
+                args.end,
+                args.adjust,
+                args.seed + index - 1,
+                args.alpaca_env_prefix,
+                args.alpaca_feed,
             )
             normalized_df = normalize_dataframe(
                 raw_df, provider=provider_label, adjust=args.adjust or "none"

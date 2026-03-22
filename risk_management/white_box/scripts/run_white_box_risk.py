@@ -77,6 +77,24 @@ def parse_args() -> argparse.Namespace:
         help="Maximum weight assigned to a single position.",
     )
     parser.add_argument(
+        "--max-gross-exposure",
+        type=float,
+        default=1.0,
+        help="Maximum total invested long exposure (0-1). Remaining weight stays in cash.",
+    )
+    parser.add_argument(
+        "--confidence-target",
+        type=float,
+        default=0.0,
+        help="If >0, scale gross exposure by mean selected confidence / confidence_target.",
+    )
+    parser.add_argument(
+        "--min-gross-exposure",
+        type=float,
+        default=0.0,
+        help="Lower bound for adaptive gross exposure when confidence scaling is enabled.",
+    )
+    parser.add_argument(
         "--transaction-cost-bps",
         type=float,
         default=10.0,
@@ -156,6 +174,9 @@ def main() -> int:
         sector_column=args.sector_column,
         weighting=args.weighting,
         max_position_weight=args.max_position_weight,
+        max_gross_exposure=args.max_gross_exposure,
+        confidence_target=args.confidence_target,
+        min_gross_exposure=args.min_gross_exposure,
         transaction_cost_bps=args.transaction_cost_bps,
         hold_buffer=args.hold_buffer,
         max_turnover=args.max_turnover,
