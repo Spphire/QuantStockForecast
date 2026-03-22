@@ -22,6 +22,8 @@
   看 2026-03-22 这轮融合后的完整验证结果
 - [peer_comparison_backtest_setting.md](C:/Users/Apricity/Desktop/QuantStockForecast/docs/project/peer_comparison_backtest_setting.md)
   看与 StockMachine 对齐的 strict backtest setting 和复现命令
+- [test_report_2026-03-22_strict_peer_comparison.md](C:/Users/Apricity/Desktop/QuantStockForecast/docs/project/test_report_2026-03-22_strict_peer_comparison.md)
+  看 strict peer-comparison 改动对应的测试报告
 
 ## Related Module Guides
 
