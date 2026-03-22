@@ -56,10 +56,12 @@ Invoke-RepoPython -RepoRoot $repoRoot -Arguments @(
     "--provider", "alpaca",
     "--symbols-file", $universeSymbols,
     "--name", "us_large_cap_30",
-    "--start", "2020-01-01",
+    "--start", "1990-01-01",
     "--end", $DataEndDate,
     "--alpaca-env-prefix", $alpacaDataEnvPrefix,
     "--alpaca-feed", "iex",
+    "--incremental",
+    "--write-latest-alias",
     "--continue-on-error"
 )
 
@@ -72,9 +74,15 @@ if ($RefreshMetadata -or -not (Test-Path (Join-Path $repoRoot $metadataCsv))) {
     )
 }
 
-$latestUniverseCsv = Get-ChildItem (Join-Path $repoRoot "data/interim/alpaca/universes/us_large_cap_30_20200101_*_hfq_normalized.csv") |
-    Sort-Object Name |
-    Select-Object -Last 1
+$latestUniverseAlias = Join-Path $repoRoot "data/interim/alpaca/universes/us_large_cap_30_latest_hfq_normalized.csv"
+if (Test-Path $latestUniverseAlias) {
+    $latestUniverseCsv = Get-Item $latestUniverseAlias
+}
+else {
+    $latestUniverseCsv = Get-ChildItem (Join-Path $repoRoot "data/interim/alpaca/universes/us_large_cap_30_*_hfq_normalized.csv") |
+        Sort-Object Name |
+        Select-Object -Last 1
+}
 
 if ($null -eq $latestUniverseCsv) {
     throw "No normalized U.S. universe CSV found after fetch."

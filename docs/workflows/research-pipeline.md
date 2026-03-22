@@ -23,12 +23,18 @@ powershell -ExecutionPolicy Bypass -File .\execution\scripts\windows\invoke_dail
 
 ## 流水线主步骤（脚本内已固化）
 
-1. `fetch_stock_universe.py` 拉取 U.S. universe 行情
+1. `fetch_stock_universe.py` 增量补齐 U.S. universe 行情（并写入 `latest` 稳定别名）
 2. `fetch_stock_metadata.py` 更新元数据（按需）
 3. 对两条策略分别运行 5 个 expert 推理
 4. `predict_ensemble.py` 生成 ensemble 预测
 5. `run_white_box_risk.py` 生成目标仓位与风险汇总
 6. 输出 research phase operation brief
+
+## 数据集约定（Alpaca）
+
+- 全量初始化可从很早日期开始（例如 `1990-01-01`），实际可得范围以 Alpaca 返回为准。
+- 日常夜间 research 默认走 `--incremental`，只补拉每个 symbol 缺失尾部日期。
+- 下游统一读取 `data/interim/alpaca/universes/us_large_cap_30_latest_hfq_normalized.csv`，避免依赖带日期后缀的文件名。
 
 ## 关键输入
 
@@ -42,4 +48,3 @@ powershell -ExecutionPolicy Bypass -File .\execution\scripts\windows\invoke_dail
 - `risk_management/white_box/runtime/us_zeroshot_a_share_multi_expert_daily/`
 - `risk_management/white_box/runtime/us_full_multi_expert_daily/`
 - `artifacts/ops_briefs/research/latest/`
-

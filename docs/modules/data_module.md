@@ -29,13 +29,20 @@
 - 标准化数据：`data/interim/<provider>/..._normalized.csv`
 - 清单文件：`..._manifest.json`
 - 股票池合并文件：`data/interim/<provider>/universes/..._normalized.csv`
+- 股票池稳定别名：`data/interim/<provider>/universes/<name>_latest_<adjust>_normalized.csv`
 
 ## 示例命令
 
-抓取美股股票池（Alpaca 数据）：
+首次全量初始化美股股票池（Alpaca）：
 
 ```powershell
-python data_module/fetchers/scripts/fetch_stock_universe.py --provider alpaca --symbols-file configs/stock_universe_us_large_cap_30.txt --name us_large_cap_30 --start 2020-01-01 --end 2026-03-22 --alpaca-env-prefix ALPACA_ZERO_SHOT --alpaca-feed iex --continue-on-error
+python data_module/fetchers/scripts/fetch_stock_universe.py --provider alpaca --symbols-file configs/stock_universe_us_large_cap_30.txt --name us_large_cap_30 --start 1990-01-01 --end 2026-03-22 --alpaca-env-prefix ALPACA_ZERO_SHOT --alpaca-feed iex --write-latest-alias --continue-on-error
+```
+
+夜间任务增量补齐（基于已存在数据集）：
+
+```powershell
+python data_module/fetchers/scripts/fetch_stock_universe.py --provider alpaca --symbols-file configs/stock_universe_us_large_cap_30.txt --name us_large_cap_30 --start 1990-01-01 --end 2026-03-22 --alpaca-env-prefix ALPACA_ZERO_SHOT --alpaca-feed iex --incremental --write-latest-alias --continue-on-error
 ```
 
 抓取元数据：
@@ -43,4 +50,3 @@ python data_module/fetchers/scripts/fetch_stock_universe.py --provider alpaca --
 ```powershell
 python data_module/fetchers/scripts/fetch_stock_metadata.py --provider wikipedia_sp500 --symbols-file configs/stock_universe_us_large_cap_30.txt --output-csv data/interim/alpaca/universes/us_large_cap_30_metadata.csv
 ```
-

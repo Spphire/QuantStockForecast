@@ -8,6 +8,9 @@
   拉取单支股票历史行情
 - [fetch_stock_universe.py](C:/Users/Apricity/Desktop/股票/data_module/fetchers/scripts/fetch_stock_universe.py)
   拉取股票池并合并成 universe 数据集
+  - 支持 `--incremental`：基于已有 universe 数据集只补拉缺失日期
+  - 支持 `--write-latest-alias`：额外输出稳定文件 `*_latest_*.csv`
+  - 支持 `--bootstrap-start`：增量模式下对缺失 symbol 的历史回填起点
 - [fetch_stock_metadata.py](C:/Users/Apricity/Desktop/股票/data_module/fetchers/scripts/fetch_stock_metadata.py)
   拉取行业等元数据
 - [normalize_ohlcv.py](C:/Users/Apricity/Desktop/股票/data_module/fetchers/scripts/normalize_ohlcv.py)
@@ -47,6 +50,7 @@
 - 每支股票各自的 `raw/normalized/manifest`
 - 合并后的 universe `normalized.csv`
 - universe 级别 `manifest.json`
+- 可选稳定别名 `*_latest_*.csv` 与 `*_latest_*.json`
 
 ## 元数据抓取
 
@@ -68,6 +72,12 @@
 1. 用 `fetch_stock_universe.py --provider stooq`
 2. 用 `fetch_stock_metadata.py --provider wikipedia_sp500`
 3. 产物直接进入 zero-shot 推理和风控回测
+
+### 美股（Alpaca 生产）
+
+1. 首次全量：`fetch_stock_universe.py --provider alpaca --start 1990-01-01 ... --write-latest-alias`
+2. 夜间增量：`fetch_stock_universe.py --provider alpaca --incremental --write-latest-alias`
+3. 下游统一消费 `data/interim/alpaca/universes/us_large_cap_30_latest_hfq_normalized.csv`
 
 ## 重要约束
 
