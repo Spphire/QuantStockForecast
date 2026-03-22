@@ -60,6 +60,30 @@ python risk_management/white_box/scripts/run_white_box_risk.py model_prediction/
 - `--min-trade-weight`
   忽略非常小的仓位变化，减少碎片化调仓
 
+## 严格对齐设置（Peer Comparison）
+
+如果你要对齐 `StockMachine-20260321` 的 `P0 Strict` 对照协议，可以直接用：
+
+```powershell
+python risk_management/white_box/scripts/run_white_box_risk.py <predictions_csv> --metadata-csv <metadata_csv> --strict-peer-comparison
+```
+
+这个开关会一次性应用以下关键参数：
+
+- `top_k=10`
+- `min_close=10`
+- `min_median_dollar_volume_20=50000000`
+- `max_vol_20=0.04`
+- `group_column=industry_sector` 且 `max_per_group=2`
+- `sector_neutralization=true` 且 `sector_column=industry_sector`
+- `transaction_cost_bps=10`
+- `benchmark_symbol=SPY`
+- `rebalance_step=5`
+
+协议定义代码在：
+
+- `risk_management/white_box/protocols.py`
+
 ## 输出
 
 默认输出到预测文件同级目录下的 `white_box_risk/`：

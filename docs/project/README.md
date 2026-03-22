@@ -20,6 +20,8 @@
   看 Windows 任务计划程序的落地方式
 - [full_validation_2026-03-22.md](C:/Users/Apricity/Desktop/股票/docs/project/full_validation_2026-03-22.md)
   看 2026-03-22 这轮融合后的完整验证结果
+- [peer_comparison_backtest_setting.md](C:/Users/Apricity/Desktop/QuantStockForecast/docs/project/peer_comparison_backtest_setting.md)
+  看与 StockMachine 对齐的 strict backtest setting 和复现命令
 
 ## Related Module Guides
 

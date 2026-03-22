@@ -98,6 +98,7 @@ def select_with_hysteresis(
     previous_weights: dict[str, float],
     *,
     top_k: int,
+    selection_score_column: str = "score",
     group_column: str = "",
     max_per_group: int = 0,
     secondary_group_column: str = "",
@@ -114,7 +115,9 @@ def select_with_hysteresis(
         if float(weight) > 1e-12
     }
     working["was_held"] = working["symbol"].astype(str).isin(held_symbols)
-    working["selection_score"] = pd.to_numeric(working["score"], errors="coerce").fillna(0.0)
+    working["selection_score"] = pd.to_numeric(
+        working[selection_score_column], errors="coerce"
+    ).fillna(0.0)
     if hold_buffer > 0:
         working.loc[working["was_held"], "selection_score"] += hold_buffer
 
@@ -153,6 +156,38 @@ def build_weighted_portfolio(
     return portfolio
 
 
+def _apply_sector_neutralized_scores(
+    eligible: pd.DataFrame,
+    *,
+    sector_neutralization: bool,
+    sector_column: str,
+) -> pd.DataFrame:
+    working = eligible.copy()
+    working["selection_score"] = pd.to_numeric(working["score"], errors="coerce").fillna(0.0)
+    if sector_neutralization and sector_column and sector_column in working.columns:
+        sector_mean = (
+            working.groupby(sector_column)["selection_score"].transform("mean").fillna(0.0)
+        )
+        working["selection_score"] = working["selection_score"] - sector_mean
+    return working
+
+
+def _resolve_benchmark_return(
+    date_slice: pd.DataFrame,
+    *,
+    benchmark_symbol: str,
+) -> float:
+    normalized_symbol = standardize_symbol(benchmark_symbol) if benchmark_symbol else ""
+    if normalized_symbol:
+        benchmark_rows = date_slice[date_slice["symbol"].astype(str) == normalized_symbol]
+        benchmark_returns = benchmark_rows["realized_return"].dropna()
+        if not benchmark_returns.empty:
+            return float(benchmark_returns.iloc[0])
+
+    benchmark_realized = date_slice["realized_return"].dropna()
+    return float(benchmark_realized.mean()) if not benchmark_realized.empty else 0.0
+
+
 def run_white_box_risk(
     predictions_csv: str | Path,
     *,
@@ -170,21 +205,29 @@ def run_white_box_risk(
     min_amount: float = 0.0,
     min_turnover: float = 0.0,
     min_volume: float = 0.0,
+    min_median_dollar_volume_20: float = 0.0,
+    max_vol_20: float = 0.0,
     group_column: str = "",
     max_per_group: int = 0,
     secondary_group_column: str = "",
     secondary_max_per_group: int = 0,
+    sector_neutralization: bool = False,
+    sector_column: str = "",
     weighting: str = "equal",
     max_position_weight: float = 1.0,
     transaction_cost_bps: float = 10.0,
     hold_buffer: float = 0.0,
     max_turnover: float = 0.0,
     min_trade_weight: float = 0.0,
+    benchmark_symbol: str = "",
 ) -> dict[str, object]:
     signals = load_signal_frame(predictions_csv, model_name=model_name, score_column=score_column)
     if metadata_csv:
         signals = merge_metadata(signals, metadata_csv)
-    signals = ensure_group_columns(signals, [group_column, secondary_group_column])
+    signals = ensure_group_columns(
+        signals,
+        [group_column, secondary_group_column, sector_column],
+    )
     signals = apply_liquidity_filters(
         signals,
         min_close=min_close,
@@ -192,6 +235,8 @@ def run_white_box_risk(
         min_amount=min_amount,
         min_turnover=min_turnover,
         min_volume=min_volume,
+        min_median_dollar_volume_20=min_median_dollar_volume_20,
+        max_vol_20=max_vol_20,
     )
 
     if signals.empty:
@@ -220,9 +265,15 @@ def run_white_box_risk(
         if eligible.empty:
             continue
 
+        eligible = _apply_sector_neutralized_scores(
+            eligible,
+            sector_neutralization=sector_neutralization,
+            sector_column=sector_column,
+        )
         selected = select_with_hysteresis(
             eligible,
             top_k=top_k,
+            selection_score_column="selection_score",
             group_column=group_column,
             max_per_group=max_per_group,
             secondary_group_column=secondary_group_column,
@@ -265,10 +316,12 @@ def run_white_box_risk(
         has_realized_return = bool(sized["realized_return"].notna().any())
         if has_realized_return:
             realized = sized["realized_return"].fillna(0.0)
-            benchmark_realized = date_slice["realized_return"].dropna()
             gross_return = float((sized["weight"] * realized).sum())
             net_return = gross_return - cost
-            benchmark_return = float(benchmark_realized.mean()) if not benchmark_realized.empty else 0.0
+            benchmark_return = _resolve_benchmark_return(
+                date_slice,
+                benchmark_symbol=benchmark_symbol,
+            )
             equity *= 1 + net_return
             benchmark_equity *= 1 + benchmark_return
         else:
@@ -336,6 +389,13 @@ def run_white_box_risk(
         "rebalance_step": rebalance_step,
         "min_score": min_score,
         "min_confidence": min_confidence,
+        "min_close": min_close,
+        "max_close": max_close,
+        "min_amount": min_amount,
+        "min_turnover": min_turnover,
+        "min_volume": min_volume,
+        "min_median_dollar_volume_20": min_median_dollar_volume_20,
+        "max_vol_20": max_vol_20,
         "weighting": weighting,
         "max_position_weight": max_position_weight,
         "transaction_cost_bps": transaction_cost_bps,
@@ -346,6 +406,9 @@ def run_white_box_risk(
         "max_per_group": max_per_group,
         "secondary_group_column": secondary_group_column,
         "secondary_max_per_group": secondary_max_per_group,
+        "sector_neutralization": sector_neutralization,
+        "sector_column": sector_column,
+        "benchmark_symbol": benchmark_symbol or "cross_section_mean",
         "periods": int(len(periods_df)),
         "total_return": total_return,
         "benchmark_total_return": benchmark_total_return,

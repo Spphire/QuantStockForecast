@@ -12,6 +12,7 @@ PROJECT_ROOT = Path(__file__).resolve().parents[3]
 if str(PROJECT_ROOT) not in sys.path:
     sys.path.append(str(PROJECT_ROOT))
 
+from risk_management.white_box.protocols import strict_white_box_kwargs
 from risk_management.white_box.risk_pipeline import run_white_box_risk
 
 
@@ -38,6 +39,18 @@ def parse_args() -> argparse.Namespace:
     parser.add_argument("--min-amount", type=float, default=0.0, help="Minimum成交额.")
     parser.add_argument("--min-turnover", type=float, default=0.0, help="Minimum turnover.")
     parser.add_argument("--min-volume", type=float, default=0.0, help="Minimum volume.")
+    parser.add_argument(
+        "--min-median-dollar-volume-20",
+        type=float,
+        default=0.0,
+        help="Minimum 20-day median dollar volume.",
+    )
+    parser.add_argument(
+        "--max-vol-20",
+        type=float,
+        default=0.0,
+        help="Maximum 20-day volatility filter. Use 0 to disable.",
+    )
     parser.add_argument("--group-column", default="", help="Primary group column, such as industry_group.")
     parser.add_argument("--max-per-group", type=int, default=0, help="Max names per primary group.")
     parser.add_argument(
@@ -87,11 +100,36 @@ def parse_args() -> argparse.Namespace:
         default=0.0,
         help="Ignore tiny weight changes smaller than this threshold.",
     )
+    parser.add_argument(
+        "--sector-neutralization",
+        action="store_true",
+        help="Neutralize score by sector (score - sector mean score) before ranking.",
+    )
+    parser.add_argument(
+        "--sector-column",
+        default="",
+        help="Sector column used for neutralization (for example industry_sector).",
+    )
+    parser.add_argument(
+        "--benchmark-symbol",
+        default="",
+        help="Benchmark symbol used for benchmark return (for example SPY).",
+    )
+    parser.add_argument(
+        "--strict-peer-comparison",
+        action="store_true",
+        help="Apply frozen P0 strict peer-comparison defaults.",
+    )
     return parser.parse_args()
 
 
 def main() -> int:
     args = parse_args()
+    if args.strict_peer_comparison:
+        strict_defaults = strict_white_box_kwargs()
+        for field, value in strict_defaults.items():
+            setattr(args, field, value)
+
     result = run_white_box_risk(
         args.predictions_csv,
         output_dir=args.output_dir,
@@ -108,16 +146,21 @@ def main() -> int:
         min_amount=args.min_amount,
         min_turnover=args.min_turnover,
         min_volume=args.min_volume,
+        min_median_dollar_volume_20=args.min_median_dollar_volume_20,
+        max_vol_20=args.max_vol_20,
         group_column=args.group_column,
         max_per_group=args.max_per_group,
         secondary_group_column=args.secondary_group_column,
         secondary_max_per_group=args.secondary_max_per_group,
+        sector_neutralization=args.sector_neutralization,
+        sector_column=args.sector_column,
         weighting=args.weighting,
         max_position_weight=args.max_position_weight,
         transaction_cost_bps=args.transaction_cost_bps,
         hold_buffer=args.hold_buffer,
         max_turnover=args.max_turnover,
         min_trade_weight=args.min_trade_weight,
+        benchmark_symbol=args.benchmark_symbol,
     )
     print(f"[OK] Risk periods: {result['periods_path']}")
     print(f"[OK] Risk positions: {result['positions_path']}")

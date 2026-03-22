@@ -107,7 +107,14 @@ def normalize_signals(
         }
     )
 
-    for column in ["close", "amount", "turnover", "volume"]:
+    for column in [
+        "close",
+        "amount",
+        "turnover",
+        "volume",
+        "median_dollar_volume_20",
+        "vol_20",
+    ]:
         if column in working.columns:
             signal_df[column] = pd.to_numeric(working[column], errors="coerce")
 
@@ -115,6 +122,23 @@ def normalize_signals(
         signal_df["pred_label"] = pd.to_numeric(working["pred_label"], errors="coerce")
     if "pred_rank" in working.columns:
         signal_df["pred_rank"] = pd.to_numeric(working["pred_rank"], errors="coerce")
+
+    passthrough_columns = (
+        "name",
+        "industry_standard",
+        "industry_code",
+        "industry_sector",
+        "industry_group",
+        "industry_subgroup",
+        "industry_detail",
+        "industry_change_date",
+        "amount_bucket",
+        "turnover_bucket",
+        "price_bucket_dynamic",
+    )
+    for column in passthrough_columns:
+        if column in working.columns and column not in signal_df.columns:
+            signal_df[column] = working[column]
 
     signal_df = signal_df.dropna(subset=["date", "symbol", "score"]).copy()
     signal_df = signal_df.sort_values(["date", "symbol"], kind="stable").reset_index(drop=True)
