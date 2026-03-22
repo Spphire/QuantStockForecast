@@ -1,6 +1,7 @@
 {
   "feishu": {
     "enabled": false,
-    "webhook_url": "https://open.feishu.cn/open-apis/bot/v2/hook/replace-me"
+    "webhook_url": "https://open.feishu.cn/open-apis/bot/v2/hook/replace-me",
+    "secret": "replace-me-if-signing-enabled"
   }
 }

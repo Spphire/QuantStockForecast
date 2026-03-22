@@ -145,25 +145,81 @@ function Publish-OperationBriefNotification {
         [psobject]$BriefPayload
     )
 
-    $webhook = $env:QSF_FEISHU_WEBHOOK_URL
-    if ([string]::IsNullOrWhiteSpace($webhook)) {
-        $webhook = [Environment]::GetEnvironmentVariable("QSF_FEISHU_WEBHOOK_URL", "User")
-    }
-    if ([string]::IsNullOrWhiteSpace($webhook)) {
-        Write-Host "[notify] QSF_FEISHU_WEBHOOK_URL is not configured. Skipping outbound notification."
+    $notifyConfig = Get-FeishuNotificationConfig
+    if ([string]::IsNullOrWhiteSpace($notifyConfig.WebhookUrl)) {
+        Write-Host "[notify] Feishu webhook is not configured. Skipping outbound notification."
         return
     }
 
     $message = Format-OperationBriefMessage -BriefPayload $BriefPayload
-    $body = @{
+    $payload = @{
         msg_type = "text"
         content = @{
             text = $message
         }
-    } | ConvertTo-Json -Depth 10
+    }
+    if (-not [string]::IsNullOrWhiteSpace($notifyConfig.Secret)) {
+        $timestamp = [DateTimeOffset]::UtcNow.ToUnixTimeSeconds().ToString()
+        $stringToSign = "$timestamp`n$($notifyConfig.Secret)"
+        $hmac = [System.Security.Cryptography.HMACSHA256]::new([System.Text.Encoding]::UTF8.GetBytes($stringToSign))
+        try {
+            $signature = [Convert]::ToBase64String($hmac.ComputeHash([byte[]]@()))
+        }
+        finally {
+            $hmac.Dispose()
+        }
+        $payload.timestamp = $timestamp
+        $payload.sign = $signature
+    }
+    $body = $payload | ConvertTo-Json -Depth 10
 
-    Invoke-RestMethod -Uri $webhook -Method Post -ContentType "application/json; charset=utf-8" -Body $body | Out-Null
+    Invoke-RestMethod -Uri $notifyConfig.WebhookUrl -Method Post -ContentType "application/json; charset=utf-8" -Body $body | Out-Null
     Write-Host "[notify] Feishu brief sent."
+}
+
+function Get-FeishuNotificationConfig {
+    $repoRoot = Get-RepoRoot
+    $configPath = Join-Path $repoRoot "configs\ops_notifications.local.json"
+
+    $webhook = ""
+    $secret = ""
+
+    if (Test-Path $configPath) {
+        try {
+            $config = Get-Content $configPath -Raw | ConvertFrom-Json -Depth 20
+            if ($null -ne $config -and $null -ne $config.feishu) {
+                if ($config.feishu.enabled -eq $false) {
+                    return [pscustomobject]@{
+                        WebhookUrl = ""
+                        Secret = ""
+                    }
+                }
+                $webhook = [string]$config.feishu.webhook_url
+                $secret = [string]$config.feishu.secret
+            }
+        }
+        catch {
+            Write-Warning ("Failed to parse ops_notifications.local.json: " + $_.Exception.Message)
+        }
+    }
+
+    if ([string]::IsNullOrWhiteSpace($webhook)) {
+        $webhook = $env:QSF_FEISHU_WEBHOOK_URL
+    }
+    if ([string]::IsNullOrWhiteSpace($webhook)) {
+        $webhook = [Environment]::GetEnvironmentVariable("QSF_FEISHU_WEBHOOK_URL", "User")
+    }
+    if ([string]::IsNullOrWhiteSpace($secret)) {
+        $secret = $env:QSF_FEISHU_WEBHOOK_SECRET
+    }
+    if ([string]::IsNullOrWhiteSpace($secret)) {
+        $secret = [Environment]::GetEnvironmentVariable("QSF_FEISHU_WEBHOOK_SECRET", "User")
+    }
+
+    return [pscustomobject]@{
+        WebhookUrl = $webhook
+        Secret = $secret
+    }
 }
 
 function Format-OperationBriefMessage {

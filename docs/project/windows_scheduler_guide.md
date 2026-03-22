@@ -110,11 +110,16 @@ setx QSF_FEISHU_WEBHOOK_URL "https://open.feishu.cn/open-apis/bot/v2/hook/..."
 
 脚本会自动把简报摘要、本地 HTML 路径和 PNG 路径推送到飞书群机器人。没有配置这个变量时，任务仍会正常运行，只是不发送外部通知。
 
-如果你是手动直接跑 `paper_brief --notify`，也可以把：
+如果你更希望把 webhook 和签名密钥持久化到本地 config，也可以把：
 
 - [ops_notifications.example.json](C:/Users/Apricity/Desktop/QuantStockForecast/configs/ops_notifications.example.json)
 
-复制为本地文件 `configs/ops_notifications.local.json` 后再填入 webhook。
+复制为本地文件 `configs/ops_notifications.local.json` 后再填入 `webhook_url` 和 `secret`。
+
+当前优先级是：
+
+1. `configs/ops_notifications.local.json`
+2. `QSF_FEISHU_WEBHOOK_URL` / `QSF_FEISHU_WEBHOOK_SECRET`
 
 ## Safety Notes
 
