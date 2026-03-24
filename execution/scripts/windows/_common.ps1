@@ -11,6 +11,21 @@ function Get-RepoPython {
         [string]$RepoRoot
     )
 
+    $overridePython = [string]$env:QSF_REPO_PYTHON
+    if ([string]::IsNullOrWhiteSpace($overridePython)) {
+        $overridePython = [Environment]::GetEnvironmentVariable("QSF_REPO_PYTHON", "User")
+    }
+    if ([string]::IsNullOrWhiteSpace($overridePython)) {
+        $overridePython = [Environment]::GetEnvironmentVariable("QSF_REPO_PYTHON", "Machine")
+    }
+    if (-not [string]::IsNullOrWhiteSpace($overridePython)) {
+        $resolvedOverride = $overridePython.Trim()
+        if (Test-Path $resolvedOverride) {
+            return $resolvedOverride
+        }
+        throw "QSF_REPO_PYTHON is set but not found: $resolvedOverride"
+    }
+
     $venvPython = Join-Path $RepoRoot ".venv\Scripts\python.exe"
     if (Test-Path $venvPython) {
         return $venvPython
@@ -93,10 +108,55 @@ function Get-DefaultStrategyConfigs {
         [string]$RepoRoot
     )
 
-    return @(
-        (Join-Path $RepoRoot "execution\strategies\us_zeroshot_a_share_multi_expert_daily.json"),
-        (Join-Path $RepoRoot "execution\strategies\us_full_multi_expert_daily.json")
-    )
+    $includeZeroShot = $false
+    $includeSingleLightgbmCompare = $false
+    $rawIncludeZeroShot = [string]$env:QSF_INCLUDE_ZERO_SHOT
+    if ([string]::IsNullOrWhiteSpace($rawIncludeZeroShot)) {
+        $rawIncludeZeroShot = [Environment]::GetEnvironmentVariable("QSF_INCLUDE_ZERO_SHOT", "User")
+    }
+    if ([string]::IsNullOrWhiteSpace($rawIncludeZeroShot)) {
+        $rawIncludeZeroShot = [Environment]::GetEnvironmentVariable("QSF_INCLUDE_ZERO_SHOT", "Machine")
+    }
+
+    $rawIncludeSingleLightgbmCompare = [string]$env:QSF_COMPARE_SINGLE_LIGHTGBM
+    if ([string]::IsNullOrWhiteSpace($rawIncludeSingleLightgbmCompare)) {
+        $rawIncludeSingleLightgbmCompare = [Environment]::GetEnvironmentVariable("QSF_COMPARE_SINGLE_LIGHTGBM", "User")
+    }
+    if ([string]::IsNullOrWhiteSpace($rawIncludeSingleLightgbmCompare)) {
+        $rawIncludeSingleLightgbmCompare = [Environment]::GetEnvironmentVariable("QSF_COMPARE_SINGLE_LIGHTGBM", "Machine")
+    }
+    if (-not [string]::IsNullOrWhiteSpace($rawIncludeZeroShot)) {
+        $normalizedIncludeZeroShot = $rawIncludeZeroShot.Trim().ToLowerInvariant()
+        if ($normalizedIncludeZeroShot -in @("1", "true", "yes", "y", "on")) {
+            $includeZeroShot = $true
+        }
+    }
+    if (-not [string]::IsNullOrWhiteSpace($rawIncludeSingleLightgbmCompare)) {
+        $normalizedIncludeSingleLightgbmCompare = $rawIncludeSingleLightgbmCompare.Trim().ToLowerInvariant()
+        if ($normalizedIncludeSingleLightgbmCompare -in @("1", "true", "yes", "y", "on")) {
+            $includeSingleLightgbmCompare = $true
+        }
+    }
+
+    $configs = New-Object System.Collections.Generic.List[string]
+
+    if ($includeZeroShot) {
+        $configs.Add((Join-Path $RepoRoot "execution\strategies\us_zeroshot_a_share_multi_expert_daily.json"))
+    }
+
+    $configs.Add((Join-Path $RepoRoot "execution\strategies\us_full_multi_expert_daily.json"))
+
+    if ($includeSingleLightgbmCompare) {
+        $singleLightgbmConfig = Join-Path $RepoRoot "execution\strategies\us_full_single_lightgbm_daily.json"
+        if (Test-Path $singleLightgbmConfig) {
+            $configs.Add($singleLightgbmConfig)
+        }
+        else {
+            Write-Warning ("QSF_COMPARE_SINGLE_LIGHTGBM=true but strategy config missing: " + $singleLightgbmConfig)
+        }
+    }
+
+    return $configs.ToArray()
 }
 
 function Invoke-OperationBrief {
@@ -139,6 +199,17 @@ function Invoke-OperationBrief {
     if ($null -ne $briefPayload) {
         Write-Host ("[brief] Dashboard: " + $briefPayload.dashboard_png)
         Write-Host ("[brief] HTML: " + $briefPayload.html_path)
+        if ($null -ne $briefPayload.notification) {
+            $notify = $briefPayload.notification
+            $notifySummary = "enabled=$($notify.enabled); sent=$($notify.sent)"
+            if (-not [string]::IsNullOrWhiteSpace([string]$notify.reason)) {
+                $notifySummary += "; reason=$($notify.reason)"
+            }
+            if (-not [string]::IsNullOrWhiteSpace([string]$notify.error)) {
+                $notifySummary += "; error=$($notify.error)"
+            }
+            Write-Host ("[brief] Notify: " + $notifySummary)
+        }
     }
     return $briefPayload
 }

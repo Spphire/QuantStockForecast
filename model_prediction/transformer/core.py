@@ -167,19 +167,46 @@ def load_and_prepare_frame(
 
 
 def split_unique_dates(
-    df: pd.DataFrame, train_ratio: float, valid_ratio: float
+    df: pd.DataFrame,
+    train_ratio: float,
+    valid_ratio: float,
+    *,
+    label_horizon: int = 0,
 ) -> tuple[set[str], set[str], set[str], dict[str, object]]:
     unique_dates = sorted(df["date"].dt.strftime("%Y-%m-%d").unique())
     if len(unique_dates) < 20:
         raise ValueError("Need at least 20 unique dates to create stable train/valid/test splits.")
 
+    horizon = max(int(label_horizon), 0)
     train_cut = max(1, int(len(unique_dates) * train_ratio))
     valid_cut = max(train_cut + 1, int(len(unique_dates) * (train_ratio + valid_ratio)))
     valid_cut = min(valid_cut, len(unique_dates) - 1)
 
-    train_dates = set(unique_dates[:train_cut])
-    valid_dates = set(unique_dates[train_cut:valid_cut])
-    test_dates = set(unique_dates[valid_cut:])
+    train_date_list = list(unique_dates[:train_cut])
+    valid_date_list = list(unique_dates[train_cut:valid_cut])
+    test_date_list = list(unique_dates[valid_cut:])
+
+    purged_train_dates = 0
+    purged_valid_dates = 0
+    if horizon > 0:
+        if len(train_date_list) <= horizon:
+            raise ValueError(
+                "Train split is too short for the requested horizon purge. "
+                "Increase train range or reduce --horizon."
+            )
+        if len(valid_date_list) <= horizon:
+            raise ValueError(
+                "Validation split is too short for the requested horizon purge. "
+                "Increase valid range or reduce --horizon."
+            )
+        train_date_list = train_date_list[:-horizon]
+        valid_date_list = valid_date_list[:-horizon]
+        purged_train_dates = horizon
+        purged_valid_dates = horizon
+
+    train_dates = set(train_date_list)
+    valid_dates = set(valid_date_list)
+    test_dates = set(test_date_list)
     if not train_dates or not valid_dates or not test_dates:
         raise ValueError("Time split failed. Adjust ratios or provide a longer date range.")
 
@@ -196,6 +223,9 @@ def split_unique_dates(
         "valid_date_max": max(valid_dates),
         "test_date_min": min(test_dates),
         "test_date_max": max(test_dates),
+        "label_horizon": horizon,
+        "purged_train_dates": purged_train_dates,
+        "purged_valid_dates": purged_valid_dates,
     }
     return train_dates, valid_dates, test_dates, summary
 

@@ -23,6 +23,12 @@
 
 - [夜间研究流水线](workflows/research-pipeline.md)
 - [日常 Paper Trading 流程](workflows/paper-trading-daily.md)
+- [Ablation 实验计划（Alpaca）](workflows/alpaca-ablation-plan.md)
+- [实战优化 TODO 看板](workflows/ops-optimization-todo.md)
+
+## 前瞻蓝图
+
+- [分钟级 RL 量化交易子系统蓝图（多文件）](blueprints/minute-rl-system/README.md)
 
 ## 运维与质量
 

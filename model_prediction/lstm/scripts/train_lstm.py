@@ -209,7 +209,7 @@ def main() -> int:
         prepared_df = feature_df.dropna(subset=[target_column, target_return_column]).copy()
         prepared_df = prepared_df.sort_values(["symbol", "date"], kind="stable").reset_index(drop=True)
         train_df, valid_df, test_df, split_summary = split_by_date(
-            prepared_df, args.train_ratio, args.valid_ratio
+            prepared_df, args.train_ratio, args.valid_ratio, label_horizon=args.horizon
         )
     except Exception as exc:
         print(f"[ERROR] Failed to prepare training data: {exc}")

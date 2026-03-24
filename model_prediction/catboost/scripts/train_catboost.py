@@ -299,7 +299,7 @@ def main() -> int:
             raise ValueError("No feature columns were generated.")
         prepared_df = feature_df.dropna(subset=[target_column, target_return_column]).copy()
         train_df, valid_df, test_df, split_summary = split_by_date(
-            prepared_df, args.train_ratio, args.valid_ratio
+            prepared_df, args.train_ratio, args.valid_ratio, label_horizon=args.horizon
         )
     except Exception as exc:
         print(f"[ERROR] Failed to prepare training data: {exc}")

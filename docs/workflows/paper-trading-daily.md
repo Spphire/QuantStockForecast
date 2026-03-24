@@ -36,6 +36,29 @@ python -m execution.managed.apps.paper_daily execution/strategies/us_zeroshot_a_
 python -m execution.managed.apps.paper_ops execution/strategies/us_zeroshot_a_share_multi_expert_daily.json latest-run
 ```
 
+## A/B 对照（voting vs 单模型 LightGBM）
+
+若要并行跑一周对照（默认 voting vs 单模型 LightGBM）：
+
+1. 配置第二个 paper 账号环境变量（前缀：`ALPACA_US_FULL_B`）。
+2. 打开 A/B 开关：
+
+```powershell
+$env:QSF_COMPARE_SINGLE_LIGHTGBM = "true"
+```
+
+3. 继续使用现有包装脚本（会自动加载两套策略）：
+
+```powershell
+powershell -ExecutionPolicy Bypass -File .\execution\scripts\windows\invoke_daily_research_pipeline.ps1 -IgnoreTimeWindow
+powershell -ExecutionPolicy Bypass -File .\execution\scripts\windows\invoke_market_open_submit.ps1 -IgnoreTimeWindow
+```
+
+策略文件：
+
+- `execution/strategies/us_full_multi_expert_daily.json`（voting）
+- `execution/strategies/us_full_single_lightgbm_daily.json`（单模型 LightGBM）
+
 ## 调度包装入口
 
 开盘提交包装脚本：
@@ -56,4 +79,3 @@ powershell -ExecutionPolicy Bypass -File .\execution\scripts\windows\invoke_mark
 - 非必要不要使用：
   - `--allow-unhealthy`
   - `--skip-session-guard`
-

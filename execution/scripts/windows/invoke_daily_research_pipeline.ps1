@@ -2,7 +2,8 @@ param(
     [string]$DataEndDate = "",
     [string[]]$StrategyConfigs = @(),
     [switch]$RefreshMetadata,
-    [switch]$IgnoreTimeWindow
+    [switch]$IgnoreTimeWindow,
+    [switch]$IncludeZeroShot
 )
 
 . "$PSScriptRoot\_common.ps1"
@@ -25,7 +26,38 @@ if ($StrategyConfigs.Count -eq 0) {
     $StrategyConfigs = Get-DefaultStrategyConfigs -RepoRoot $repoRoot
 }
 
-$alpacaDataEnvPrefix = "ALPACA_ZERO_SHOT"
+function Test-TruthyValue {
+    param(
+        [string]$RawValue
+    )
+
+    if ([string]::IsNullOrWhiteSpace($RawValue)) {
+        return $false
+    }
+    $normalized = $RawValue.Trim().ToLowerInvariant()
+    return $normalized -in @("1", "true", "yes", "y", "on")
+}
+
+$runSingleLightgbmCompare = Test-TruthyValue -RawValue ([string]$env:QSF_COMPARE_SINGLE_LIGHTGBM)
+foreach ($strategyConfig in $StrategyConfigs) {
+    try {
+        $strategyObject = Get-Content (Resolve-Path $strategyConfig) -Raw | ConvertFrom-Json
+        $strategyId = [string]$strategyObject.strategy_id
+        $sourcePath = ""
+        if ($null -ne $strategyObject.source) {
+            $sourcePath = [string]$strategyObject.source.path
+        }
+        if ($strategyId -eq "us_full_single_lightgbm_daily" -or $sourcePath -like "*us_full_single_lightgbm*") {
+            $runSingleLightgbmCompare = $true
+            break
+        }
+    }
+    catch {
+        Write-Warning ("Unable to inspect strategy config for compare detection: " + $strategyConfig + " (" + $_.Exception.Message + ")")
+    }
+}
+
+$alpacaDataEnvPrefix = "ALPACA_US_FULL"
 try {
     $firstConfig = Get-Content (Resolve-Path $StrategyConfigs[0]) -Raw | ConvertFrom-Json
     if (-not [string]::IsNullOrWhiteSpace([string]$firstConfig.paper_env_prefix)) {
@@ -42,6 +74,12 @@ $briefNotes.Add("Data end date: $DataEndDate")
 $briefNotes.Add("Market data provider: Alpaca ($alpacaDataEnvPrefix)")
 if ($RefreshMetadata) {
     $briefNotes.Add("Metadata refresh enabled.")
+}
+if ($IncludeZeroShot) {
+    $briefNotes.Add("Zero-shot branch enabled.")
+}
+if ($runSingleLightgbmCompare) {
+    $briefNotes.Add("A/B compare enabled: voting + single LightGBM.")
 }
 $fatalError = $null
 
@@ -117,79 +155,108 @@ $usFullMetricsPaths = @{
     transformer = "model_prediction/transformer/artifacts/validation_20260322/us_full_train/metrics.json"
 }
 
-foreach ($pathValue in @(
+$requiredPaths = @(
     $metadataCsv,
-    $aShareModelPaths.lightgbm, $aShareModelPaths.xgboost, $aShareModelPaths.catboost, $aShareModelPaths.lstm, $aShareModelPaths.transformer,
-    $aShareMetricsPaths.lightgbm, $aShareMetricsPaths.xgboost, $aShareMetricsPaths.catboost, $aShareMetricsPaths.lstm, $aShareMetricsPaths.transformer,
     $usFullModelPaths.lightgbm, $usFullModelPaths.xgboost, $usFullModelPaths.catboost, $usFullModelPaths.lstm, $usFullModelPaths.transformer,
     $usFullMetricsPaths.lightgbm, $usFullMetricsPaths.xgboost, $usFullMetricsPaths.catboost, $usFullMetricsPaths.lstm, $usFullMetricsPaths.transformer
-)) {
+)
+if ($IncludeZeroShot) {
+    $requiredPaths += @(
+        $aShareModelPaths.lightgbm, $aShareModelPaths.xgboost, $aShareModelPaths.catboost, $aShareModelPaths.lstm, $aShareModelPaths.transformer,
+        $aShareMetricsPaths.lightgbm, $aShareMetricsPaths.xgboost, $aShareMetricsPaths.catboost, $aShareMetricsPaths.lstm, $aShareMetricsPaths.transformer
+    )
+}
+
+foreach ($pathValue in $requiredPaths) {
     Assert-PathExists -PathValue (Join-Path $repoRoot $pathValue)
 }
 
 $evalStart = "2024-01-01"
-$zeroShotRoot = "model_prediction"
 $zeroShotName = "us_zeroshot_a_share_multi_daily"
 $usFullName = "us_full_multi_expert_daily"
 $latestUniverseRelative = $latestUniverseCsv.FullName.Substring($repoRoot.Length + 1)
 
-Invoke-RepoPython -RepoRoot $repoRoot -Arguments @(
-    "model_prediction/lightgbm/scripts/predict_lightgbm.py",
-    $latestUniverseRelative,
-    "--model-path", $aShareModelPaths.lightgbm,
-    "--reference-metrics", $aShareMetricsPaths.lightgbm,
-    "--output-dir", "model_prediction/lightgbm/artifacts/$zeroShotName",
-    "--eval-start", $evalStart,
-    "--eval-end", $DataEndDate
-)
-Invoke-RepoPython -RepoRoot $repoRoot -Arguments @(
-    "model_prediction/xgboost/scripts/predict_xgboost.py",
-    $latestUniverseRelative,
-    "--model-path", $aShareModelPaths.xgboost,
-    "--reference-metrics", $aShareMetricsPaths.xgboost,
-    "--output-dir", "model_prediction/xgboost/artifacts/$zeroShotName",
-    "--eval-start", $evalStart,
-    "--eval-end", $DataEndDate
-)
-Invoke-RepoPython -RepoRoot $repoRoot -Arguments @(
-    "model_prediction/catboost/scripts/predict_catboost.py",
-    $latestUniverseRelative,
-    "--model-path", $aShareModelPaths.catboost,
-    "--reference-metrics", $aShareMetricsPaths.catboost,
-    "--output-dir", "model_prediction/catboost/artifacts/$zeroShotName",
-    "--eval-start", $evalStart,
-    "--eval-end", $DataEndDate
-)
-Invoke-RepoPython -RepoRoot $repoRoot -Arguments @(
-    "model_prediction/lstm/scripts/predict_lstm.py",
-    $latestUniverseRelative,
-    "--model-path", $aShareModelPaths.lstm,
-    "--reference-metrics", $aShareMetricsPaths.lstm,
-    "--output-dir", "model_prediction/lstm/artifacts/$zeroShotName",
-    "--eval-start", $evalStart,
-    "--eval-end", $DataEndDate
-)
-Invoke-RepoPython -RepoRoot $repoRoot -Arguments @(
-    "model_prediction/transformer/scripts/predict_transformer.py",
-    $latestUniverseRelative,
-    "--model-path", $aShareModelPaths.transformer,
-    "--reference-metrics", $aShareMetricsPaths.transformer,
-    "--output-dir", "model_prediction/transformer/artifacts/$zeroShotName",
-    "--eval-start", $evalStart,
-    "--eval-end", $DataEndDate
-)
-Invoke-RepoPython -RepoRoot $repoRoot -Arguments @(
-    "model_prediction/ensemble/scripts/predict_ensemble.py",
-    "model_prediction/lightgbm/artifacts/$zeroShotName/test_predictions.csv",
-    "--prediction-csv", "model_prediction/xgboost/artifacts/$zeroShotName/test_predictions.csv",
-    "--prediction-csv", "model_prediction/catboost/artifacts/$zeroShotName/test_predictions.csv",
-    "--prediction-csv", "model_prediction/lstm/artifacts/$zeroShotName/test_predictions.csv",
-    "--prediction-csv", "model_prediction/transformer/artifacts/$zeroShotName/test_predictions.csv",
-    "--method", "mean_score",
-    "--min-experts", "5",
-    "--model-name", "ensemble_mean_score",
-    "--output-dir", "model_prediction/ensemble/artifacts/$zeroShotName"
-)
+function Invoke-EnsembleWithFallback {
+    param(
+        [Parameter(Mandatory = $true)]
+        [string]$RepoRoot,
+        [Parameter(Mandatory = $true)]
+        [string]$RunName,
+        [Parameter(Mandatory = $true)]
+        [System.Collections.Generic.List[string]]$BriefNotes
+    )
+
+    $baseArgs = @(
+        "model_prediction/ensemble/scripts/predict_ensemble.py",
+        "model_prediction/lightgbm/artifacts/$RunName/test_predictions.csv",
+        "--prediction-csv", "model_prediction/xgboost/artifacts/$RunName/test_predictions.csv",
+        "--prediction-csv", "model_prediction/catboost/artifacts/$RunName/test_predictions.csv",
+        "--prediction-csv", "model_prediction/lstm/artifacts/$RunName/test_predictions.csv",
+        "--prediction-csv", "model_prediction/transformer/artifacts/$RunName/test_predictions.csv",
+        "--min-experts", "5",
+        "--output-dir", "model_prediction/ensemble/artifacts/$RunName"
+    )
+
+    try {
+        Invoke-RepoPython -RepoRoot $RepoRoot -Arguments ($baseArgs + @("--method", "mean_score", "--model-name", "ensemble_mean_score"))
+        $BriefNotes.Add("Ensemble method for ${RunName}: mean_score")
+    }
+    catch {
+        Write-Warning ("mean_score ensemble failed for " + $RunName + ", fallback to rank_average: " + $_.Exception.Message)
+        $BriefNotes.Add("mean_score failed for $RunName; fallback to rank_average")
+        Invoke-RepoPython -RepoRoot $RepoRoot -Arguments ($baseArgs + @("--method", "rank_average", "--model-name", "ensemble_rank_average"))
+        $BriefNotes.Add("Ensemble method for ${RunName}: rank_average (fallback)")
+    }
+}
+
+if ($IncludeZeroShot) {
+    Invoke-RepoPython -RepoRoot $repoRoot -Arguments @(
+        "model_prediction/lightgbm/scripts/predict_lightgbm.py",
+        $latestUniverseRelative,
+        "--model-path", $aShareModelPaths.lightgbm,
+        "--reference-metrics", $aShareMetricsPaths.lightgbm,
+        "--output-dir", "model_prediction/lightgbm/artifacts/$zeroShotName",
+        "--eval-start", $evalStart,
+        "--eval-end", $DataEndDate
+    )
+    Invoke-RepoPython -RepoRoot $repoRoot -Arguments @(
+        "model_prediction/xgboost/scripts/predict_xgboost.py",
+        $latestUniverseRelative,
+        "--model-path", $aShareModelPaths.xgboost,
+        "--reference-metrics", $aShareMetricsPaths.xgboost,
+        "--output-dir", "model_prediction/xgboost/artifacts/$zeroShotName",
+        "--eval-start", $evalStart,
+        "--eval-end", $DataEndDate
+    )
+    Invoke-RepoPython -RepoRoot $repoRoot -Arguments @(
+        "model_prediction/catboost/scripts/predict_catboost.py",
+        $latestUniverseRelative,
+        "--model-path", $aShareModelPaths.catboost,
+        "--reference-metrics", $aShareMetricsPaths.catboost,
+        "--output-dir", "model_prediction/catboost/artifacts/$zeroShotName",
+        "--eval-start", $evalStart,
+        "--eval-end", $DataEndDate
+    )
+    Invoke-RepoPython -RepoRoot $repoRoot -Arguments @(
+        "model_prediction/lstm/scripts/predict_lstm.py",
+        $latestUniverseRelative,
+        "--model-path", $aShareModelPaths.lstm,
+        "--reference-metrics", $aShareMetricsPaths.lstm,
+        "--output-dir", "model_prediction/lstm/artifacts/$zeroShotName",
+        "--eval-start", $evalStart,
+        "--eval-end", $DataEndDate
+    )
+    Invoke-RepoPython -RepoRoot $repoRoot -Arguments @(
+        "model_prediction/transformer/scripts/predict_transformer.py",
+        $latestUniverseRelative,
+        "--model-path", $aShareModelPaths.transformer,
+        "--reference-metrics", $aShareMetricsPaths.transformer,
+        "--output-dir", "model_prediction/transformer/artifacts/$zeroShotName",
+        "--eval-start", $evalStart,
+        "--eval-end", $DataEndDate
+    )
+    Invoke-EnsembleWithFallback -RepoRoot $repoRoot -RunName $zeroShotName -BriefNotes $briefNotes
+}
 
 Invoke-RepoPython -RepoRoot $repoRoot -Arguments @(
     "model_prediction/lightgbm/scripts/predict_lightgbm.py",
@@ -236,41 +303,32 @@ Invoke-RepoPython -RepoRoot $repoRoot -Arguments @(
     "--eval-start", $evalStart,
     "--eval-end", $DataEndDate
 )
-Invoke-RepoPython -RepoRoot $repoRoot -Arguments @(
-    "model_prediction/ensemble/scripts/predict_ensemble.py",
-    "model_prediction/lightgbm/artifacts/$usFullName/test_predictions.csv",
-    "--prediction-csv", "model_prediction/xgboost/artifacts/$usFullName/test_predictions.csv",
-    "--prediction-csv", "model_prediction/catboost/artifacts/$usFullName/test_predictions.csv",
-    "--prediction-csv", "model_prediction/lstm/artifacts/$usFullName/test_predictions.csv",
-    "--prediction-csv", "model_prediction/transformer/artifacts/$usFullName/test_predictions.csv",
-    "--method", "mean_score",
-    "--min-experts", "5",
-    "--model-name", "ensemble_mean_score",
-    "--output-dir", "model_prediction/ensemble/artifacts/$usFullName"
-)
+Invoke-EnsembleWithFallback -RepoRoot $repoRoot -RunName $usFullName -BriefNotes $briefNotes
 
-Invoke-RepoPython -RepoRoot $repoRoot -Arguments @(
-    "risk_management/white_box/scripts/run_white_box_risk.py",
-    "model_prediction/ensemble/artifacts/$zeroShotName/test_predictions.csv",
-    "--metadata-csv", $metadataCsv,
-    "--rebalance-step", "1",
-    "--top-k", "5",
-    "--min-score", "0",
-    "--min-confidence", "0.7",
-    "--min-close", "5",
-    "--min-amount", "100000000",
-    "--group-column", "industry_group",
-    "--max-per-group", "1",
-    "--secondary-group-column", "amount_bucket",
-    "--secondary-max-per-group", "2",
-    "--weighting", "score_confidence",
-    "--max-position-weight", "0.35",
-    "--max-gross-exposure", "0.85",
-    "--confidence-target", "0.90",
-    "--min-gross-exposure", "0.55",
-    "--transaction-cost-bps", "10",
-    "--output-dir", "risk_management/white_box/runtime/us_zeroshot_a_share_multi_expert_daily"
-)
+if ($IncludeZeroShot) {
+    Invoke-RepoPython -RepoRoot $repoRoot -Arguments @(
+        "risk_management/white_box/scripts/run_white_box_risk.py",
+        "model_prediction/ensemble/artifacts/$zeroShotName/test_predictions.csv",
+        "--metadata-csv", $metadataCsv,
+        "--rebalance-step", "1",
+        "--top-k", "5",
+        "--min-score", "0",
+        "--min-confidence", "0.7",
+        "--min-close", "5",
+        "--min-amount", "100000000",
+        "--group-column", "industry_group",
+        "--max-per-group", "1",
+        "--secondary-group-column", "amount_bucket",
+        "--secondary-max-per-group", "2",
+        "--weighting", "score_confidence",
+        "--max-position-weight", "0.35",
+        "--max-gross-exposure", "0.85",
+        "--confidence-target", "0.90",
+        "--min-gross-exposure", "0.55",
+        "--transaction-cost-bps", "10",
+        "--output-dir", "risk_management/white_box/runtime/us_zeroshot_a_share_multi_expert_daily"
+    )
+}
 Invoke-RepoPython -RepoRoot $repoRoot -Arguments @(
     "risk_management/white_box/scripts/run_white_box_risk.py",
     "model_prediction/ensemble/artifacts/$usFullName/test_predictions.csv",
@@ -293,6 +351,30 @@ Invoke-RepoPython -RepoRoot $repoRoot -Arguments @(
     "--transaction-cost-bps", "10",
     "--output-dir", "risk_management/white_box/runtime/us_full_multi_expert_daily"
 )
+if ($runSingleLightgbmCompare) {
+    Invoke-RepoPython -RepoRoot $repoRoot -Arguments @(
+        "risk_management/white_box/scripts/run_white_box_risk.py",
+        "model_prediction/lightgbm/artifacts/$usFullName/test_predictions.csv",
+        "--metadata-csv", $metadataCsv,
+        "--rebalance-step", "1",
+        "--top-k", "5",
+        "--min-score", "0",
+        "--min-confidence", "0.7",
+        "--min-close", "5",
+        "--min-amount", "100000000",
+        "--group-column", "industry_group",
+        "--max-per-group", "1",
+        "--secondary-group-column", "amount_bucket",
+        "--secondary-max-per-group", "2",
+        "--weighting", "score_confidence",
+        "--max-position-weight", "0.35",
+        "--max-gross-exposure", "0.90",
+        "--confidence-target", "0.85",
+        "--min-gross-exposure", "0.60",
+        "--transaction-cost-bps", "10",
+        "--output-dir", "risk_management/white_box/runtime/us_full_single_lightgbm"
+    )
+}
 }
 catch {
     $briefStatus = "failed"

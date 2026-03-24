@@ -991,22 +991,26 @@ def _maybe_send_notifications(
 
 
 def _resolve_submit_notification_policy(*, config: Mapping[str, Any], feishu: Mapping[str, Any]) -> str:
+    # Runtime env should win so wrapper scripts can force one-off behavior.
     candidates = [
+        os.environ.get("QSF_FEISHU_SUBMIT_BRIEF_POLICY"),
+        os.environ.get("QSF_SUBMIT_BRIEF_POLICY"),
         feishu.get("submit_brief_policy"),
         feishu.get("submit_policy"),
         config.get("submit_brief_policy"),
         config.get("submit_policy"),
-        os.environ.get("QSF_FEISHU_SUBMIT_BRIEF_POLICY"),
-        os.environ.get("QSF_SUBMIT_BRIEF_POLICY"),
     ]
     for candidate in candidates:
-        normalized = _normalize(candidate)
-        if normalized:
-            if normalized in {"final", "final_only", "settled", "complete"}:
-                return "final_only"
-            if normalized in {"provisional", "timeout", "timeout_only", "provisional_ok", "timeout_ok", "all", "any"}:
-                return normalized
-            return normalized
+        if candidate in (None, ""):
+            continue
+        normalized = str(candidate).strip().lower()
+        if not normalized:
+            continue
+        if normalized in {"final", "final_only", "settled", "complete"}:
+            return "final_only"
+        if normalized in {"provisional", "timeout", "timeout_only", "provisional_ok", "timeout_ok", "all", "any"}:
+            return "all"
+        # Ignore invalid values and keep searching; fallback is final_only.
     return "final_only"
 
 

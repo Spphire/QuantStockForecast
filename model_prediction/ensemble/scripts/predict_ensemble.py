@@ -41,7 +41,7 @@ def parse_args() -> argparse.Namespace:
     parser.add_argument(
         "--method",
         choices=SUPPORTED_METHODS,
-        default="rank_average",
+        default="",
         help="Ensemble method used to combine expert scores.",
     )
     parser.add_argument(
@@ -104,7 +104,7 @@ def main() -> int:
         prediction_csvs = [str(item) for item in manifest_payload["prediction_csvs"]]
     prediction_csvs = dedupe_paths(prediction_csvs)
 
-    method = str(manifest_payload.get("method", args.method) or args.method)
+    method = str(args.method or manifest_payload.get("method") or "rank_average")
     if method not in SUPPORTED_METHODS:
         print(f"[ERROR] Unsupported method: {method}")
         return 1

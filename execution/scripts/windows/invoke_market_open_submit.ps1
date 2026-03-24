@@ -24,6 +24,13 @@ $python = Get-RepoPython -RepoRoot $repoRoot
 $briefStatus = "success"
 $briefNotes = New-Object System.Collections.Generic.List[string]
 $submitTitle = ([string]([char]0x5F00) + [string]([char]0x76D8) + [string]([char]0x6267) + [string]([char]0x884C) + [string]([char]0x7B80) + [string]([char]0x62A5) + " - " + $nyNow.ToString("yyyy-MM-dd"))
+if ([string]::IsNullOrWhiteSpace([string]$env:QSF_FEISHU_SUBMIT_BRIEF_POLICY)) {
+    $env:QSF_FEISHU_SUBMIT_BRIEF_POLICY = "all"
+    $briefNotes.Add("Submit brief notify policy forced to all for this run.")
+}
+if ([string]::IsNullOrWhiteSpace([string]$env:QSF_SUBMIT_BRIEF_POLICY)) {
+    $env:QSF_SUBMIT_BRIEF_POLICY = "all"
+}
 if ($AllowUnhealthy) {
     $briefNotes.Add("AllowUnhealthy enabled.")
 }

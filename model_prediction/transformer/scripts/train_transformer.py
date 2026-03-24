@@ -183,7 +183,7 @@ def main() -> int:
             require_target=True,
         )
         train_dates, valid_dates, test_dates, split_summary = split_unique_dates(
-            prepared_df, args.train_ratio, args.valid_ratio
+            prepared_df, args.train_ratio, args.valid_ratio, label_horizon=args.horizon
         )
         train_df, valid_df, test_df = split_frame_by_dates(prepared_df, train_dates, valid_dates, test_dates)
         feature_stats = fit_feature_scaler(train_df, feature_columns)
